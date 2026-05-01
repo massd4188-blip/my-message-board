@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Message Panel</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>📝 Live Message Board</h1>
+        <div id="messages">
+            <h2>Messages:</h2>
+            <div id="messageList"></div>
+        </div>
+    </div>
+
+    <script>
+        // Function to load messages
+        function loadMessages() {
+            fetch('data.txt')
+                .then(response => response.text())
+                .then(data => {
+                    const messageList = document.getElementById('messageList');
+                    const messages = data.split('\n').filter(msg => msg.trim());
+                    messageList.innerHTML = messages.length ? 
+                        messages.map(msg => `<div class="message">${msg}</div>`).join('') :
+                        '<div class="message">No messages yet</div>';
+                })
+                .catch(error => console.error('Error:', error));
+        }
+
+        // Load messages every 3 seconds
+        loadMessages();
+        setInterval(loadMessages, 3000);
+    </script>
+</body>
+</html>
