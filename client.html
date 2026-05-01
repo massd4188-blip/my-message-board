@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Client Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>💬 Message Board</h1>
+            <div class="user-info">
+                <span>Welcome, <span id="clientName"></span>!</span>
+                <button onclick="logout()" class="btn-logout">Logout</button>
+            </div>
+        </div>
+
+        <div class="message-counter">
+            <div class="counter-card">
+                <h3>Messages Remaining</h3>
+                <div class="counter-number" id="messagesLeft">10</div>
+                <div class="counter-bar">
+                    <div class="counter-fill" id="counterFill" style="width: 100%"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="send-message">
+            <h2>Send New Message</h2>
+            <form id="messageForm">
+                <textarea id="messageText" rows="4" placeholder="Type your message here..." maxlength="500"></textarea>
+                <button type="submit" class="btn-primary" id="sendBtn">Send Message</button>
+            </form>
+            <div id="messageError" class="error-message"></div>
+            <div id="messageSuccess" class="success-message"></div>
+        </div>
+
+        <div class="messages-history">
+            <h2>Your Messages History</h2>
+            <div id="messageHistory" class="messages-list">
+                Loading messages...
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

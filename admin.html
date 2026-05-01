@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>👑 Admin Dashboard</h1>
+            <div class="user-info">
+                <span>Welcome, <span id="adminName"></span>!</span>
+                <button onclick="logout()" class="btn-logout">Logout</button>
+            </div>
+        </div>
+
+        <div class="admin-stats">
+            <div class="stat-card">
+                <h3>Total Users</h3>
+                <p id="totalUsers">0</p>
+            </div>
+            <div class="stat-card">
+                <h3>Total Messages</h3>
+                <p id="totalMessages">0</p>
+            </div>
+        </div>
+
+        <div class="admin-panel">
+            <h2>User Management</h2>
+            <div class="user-list" id="userList">
+                Loading users...
+            </div>
+        </div>
+
+        <div class="modal" id="userModal" style="display:none">
+            <div class="modal-content">
+                <span class="close" onclick="closeModal()">&times;</span>
+                <h2>User Messages: <span id="modalUsername"></span></h2>
+                <div class="messages-list" id="userMessages">
+                    Loading messages...
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
