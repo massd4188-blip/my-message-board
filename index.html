@@ -1,64 +1,725 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - Message Board</title>
-    <link rel="stylesheet" href="style.css">
-    <script src="users.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+  <title>Pointage System - Admin & Client Portal</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: system-ui, 'Segoe UI', 'Inter', 'Roboto', sans-serif;
+    }
+
+    body {
+      background: linear-gradient(145deg, #e9eff7 0%, #d9e2ef 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem;
+    }
+
+    /* Cards & containers */
+    .glass-card {
+      background: rgba(255, 255, 255, 0.94);
+      backdrop-filter: blur(2px);
+      border-radius: 2rem;
+      box-shadow: 0 20px 35px -12px rgba(0, 0, 0, 0.2), 0 1px 2px rgba(0,0,0,0.05);
+      padding: 2rem 2rem 2.2rem;
+      width: 100%;
+      max-width: 500px;
+      transition: all 0.2s ease;
+    }
+
+    .wide-card {
+      max-width: 1100px;
+      width: 100%;
+    }
+
+    h1 {
+      font-size: 1.9rem;
+      font-weight: 700;
+      background: linear-gradient(135deg, #1A2E4D, #2C5282);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      margin-bottom: 0.5rem;
+      text-align: center;
+    }
+
+    h2 {
+      font-size: 1.5rem;
+      font-weight: 600;
+      color: #1e2f41;
+      margin-bottom: 1.5rem;
+      border-left: 5px solid #2c7da0;
+      padding-left: 1rem;
+    }
+
+    .sub {
+      text-align: center;
+      color: #4a627a;
+      margin-bottom: 1.8rem;
+      font-size: 0.9rem;
+    }
+
+    .form-group {
+      margin-bottom: 1.2rem;
+    }
+
+    label {
+      display: block;
+      font-weight: 600;
+      font-size: 0.85rem;
+      margin-bottom: 0.4rem;
+      color: #1e3a5f;
+    }
+
+    input, select {
+      width: 100%;
+      padding: 0.8rem 1rem;
+      border-radius: 1.2rem;
+      border: 1px solid #cbd5e1;
+      background: white;
+      font-size: 0.95rem;
+      transition: 0.2s;
+    }
+
+    input:focus {
+      outline: none;
+      border-color: #2c7da0;
+      box-shadow: 0 0 0 3px rgba(44,125,160,0.2);
+    }
+
+    button {
+      background: #2c7da0;
+      color: white;
+      border: none;
+      padding: 0.8rem 1.5rem;
+      font-weight: 600;
+      border-radius: 2rem;
+      cursor: pointer;
+      font-size: 1rem;
+      transition: 0.2s;
+      width: 100%;
+      margin-top: 0.5rem;
+    }
+
+    button:hover {
+      background: #1f5e7a;
+      transform: translateY(-1px);
+    }
+
+    .btn-secondary {
+      background: #e2e8f0;
+      color: #1e3a5f;
+      margin-top: 0.6rem;
+    }
+
+    .btn-secondary:hover {
+      background: #cbd5e1;
+    }
+
+    .btn-outline {
+      background: transparent;
+      border: 1px solid #2c7da0;
+      color: #2c7da0;
+    }
+
+    .btn-outline:hover {
+      background: #eef2ff;
+    }
+
+    .error-message {
+      background: #fee2e2;
+      color: #b91c1c;
+      border-radius: 1.5rem;
+      padding: 0.6rem 1rem;
+      font-size: 0.85rem;
+      margin-top: 1rem;
+      text-align: center;
+    }
+
+    .success-message {
+      background: #e0f2e9;
+      color: #166534;
+      border-radius: 1.5rem;
+      padding: 0.6rem 1rem;
+      margin-top: 1rem;
+    }
+
+    /* Dashboard layout */
+    .dashboard-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      flex-wrap: wrap;
+      gap: 1rem;
+      margin-bottom: 2rem;
+      border-bottom: 2px solid #cbd5e180;
+      padding-bottom: 1rem;
+    }
+
+    .welcome-badge {
+      font-weight: 700;
+      background: #eef2ff;
+      padding: 0.4rem 1rem;
+      border-radius: 3rem;
+      color: #1f5e7a;
+    }
+
+    .admin-actions {
+      display: flex;
+      gap: 0.8rem;
+      flex-wrap: wrap;
+    }
+
+    .user-list {
+      background: #f8fafc;
+      border-radius: 1.5rem;
+      padding: 1rem;
+      margin-top: 1rem;
+    }
+
+    .user-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: white;
+      border-radius: 1.2rem;
+      padding: 0.8rem 1.2rem;
+      margin-bottom: 0.7rem;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+      border: 1px solid #e2edf2;
+    }
+
+    .user-name {
+      font-weight: 700;
+      color: #0f2c3f;
+      cursor: pointer;
+      text-decoration: underline;
+      text-underline-offset: 3px;
+    }
+
+    .user-name:hover {
+      color: #2c7da0;
+    }
+
+    .user-actions {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .small-btn {
+      padding: 0.4rem 0.9rem;
+      font-size: 0.75rem;
+      width: auto;
+      margin-top: 0;
+    }
+
+    .client-panel {
+      background: #fef9e8;
+      border-radius: 1.5rem;
+      padding: 1.5rem;
+      margin-top: 1rem;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      margin: 1rem 0;
+    }
+
+    .stat-card {
+      background: white;
+      border-radius: 1.2rem;
+      padding: 1rem;
+      text-align: center;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+    }
+
+    .balance {
+      font-size: 1.8rem;
+      font-weight: 800;
+      color: #1f5e7a;
+    }
+
+    hr {
+      margin: 1rem 0;
+      border-color: #e2e8f0;
+    }
+
+    @media (max-width: 700px) {
+      .glass-card {
+        padding: 1.5rem;
+      }
+      .user-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.6rem;
+      }
+      .stats-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
 </head>
 <body>
-    <div class="container">
-        <h1>📝 Message Board System</h1>
-        
-        <div class="tab-buttons">
-            <button class="tab-btn active" onclick="showTab('login')">Login</button>
-            <button class="tab-btn" onclick="showTab('register')">Register</button>
-        </div>
 
-        <!-- Login Form -->
-        <div id="login-tab" class="tab-content active">
-            <form id="loginForm">
-                <div class="form-group">
-                    <label>Username:</label>
-                    <input type="text" id="loginUsername" required>
-                </div>
-                <div class="form-group">
-                    <label>Password:</label>
-                    <input type="password" id="loginPassword" required>
-                </div>
-                <button type="submit" class="btn-primary">Login</button>
-            </form>
-            <div id="loginError" class="error-message"></div>
-        </div>
+<div id="app"></div>
 
-        <!-- Register Form -->
-        <div id="register-tab" class="tab-content">
-            <form id="registerForm">
-                <div class="form-group">
-                    <label>Username:</label>
-                    <input type="text" id="regUsername" required pattern="[a-zA-Z0-9_]{3,20}">
-                    <small>3-20 characters (letters, numbers, underscore)</small>
-                </div>
-                <div class="form-group">
-                    <label>Password:</label>
-                    <input type="password" id="regPassword" required>
-                </div>
-                <div class="form-group">
-                    <label>Confirm Password:</label>
-                    <input type="password" id="regConfirmPassword" required>
-                </div>
-                <div class="form-group">
-                    <label>Date of Birth:</label>
-                    <input type="date" id="regDob" required>
-                </div>
-                <button type="submit" class="btn-primary">Register</button>
-            </form>
-            <div id="registerError" class="error-message"></div>
-            <div id="registerSuccess" class="success-message"></div>
-        </div>
-    </div>
+<script>
+  // ---------- MOCK DATABASE (localStorage based persistence) ----------
+  // Structure: users array -> { id, username, password, role, adminKeyUsed, sold, monthlyUsage, active, createdAt }
+  // For simplicity we store initial admin "admin" with key "BTS" and client "clientdemo"
+  
+  function loadUsersFromStorage() {
+    const stored = localStorage.getItem("pointage_users");
+    if (stored) {
+      return JSON.parse(stored);
+    }
+    // default seed
+    return [
+      {
+        id: "u1",
+        username: "admin",
+        password: "admin123",
+        role: "admin",
+        adminKeyUsed: "BTS",
+        sold: 0,
+        monthlyUsage: [ { month: "April 2026", consumption: 125.5, paid: true }, { month: "March 2026", consumption: 98.2, paid: true } ],
+        active: true,
+        createdAt: new Date().toISOString()
+      },
+      {
+        id: "u2",
+        username: "client1",
+        password: "client123",
+        role: "client",
+        adminKeyUsed: null,
+        sold: 245.75,
+        monthlyUsage: [ { month: "April 2026", consumption: 210.3, paid: false }, { month: "March 2026", consumption: 187.9, paid: true } ],
+        active: true,
+        createdAt: new Date().toISOString()
+      },
+      {
+        id: "u3",
+        username: "martin",
+        password: "pass456",
+        role: "client",
+        adminKeyUsed: null,
+        sold: 89.5,
+        monthlyUsage: [ { month: "April 2026", consumption: 45.2, paid: false }, { month: "March 2026", consumption: 60.0, paid: true } ],
+        active: true,
+        createdAt: new Date().toISOString()
+      }
+    ];
+  }
 
-    <script src="script.js"></script>
+  let users = loadUsersFromStorage();
+  let currentLoggedUser = null; // stores full user object (ref)
+
+  function saveUsers() {
+    localStorage.setItem("pointage_users", JSON.stringify(users));
+  }
+
+  // helper: update user in array
+  function updateUser(updatedUser) {
+    const index = users.findIndex(u => u.id === updatedUser.id);
+    if (index !== -1) users[index] = updatedUser;
+    saveUsers();
+    if (currentLoggedUser && currentLoggedUser.id === updatedUser.id) currentLoggedUser = updatedUser;
+  }
+
+  function addUser(userObj) {
+    users.push(userObj);
+    saveUsers();
+  }
+
+  function deleteUserById(userId) {
+    users = users.filter(u => u.id !== userId);
+    if (currentLoggedUser && currentLoggedUser.id === userId) currentLoggedUser = null;
+    saveUsers();
+  }
+
+  // ---------- ROUTING & RENDER ----------
+  let currentView = "login"; // login, adminDashboard, clientDashboard
+
+  function render() {
+    const app = document.getElementById("app");
+    if (currentView === "login") {
+      app.innerHTML = renderLoginPage();
+      attachLoginEvents();
+    } else if (currentView === "adminDashboard" && currentLoggedUser && currentLoggedUser.role === "admin") {
+      app.innerHTML = renderAdminDashboard();
+      attachAdminEvents();
+    } else if (currentView === "clientDashboard" && currentLoggedUser && currentLoggedUser.role === "client") {
+      app.innerHTML = renderClientDashboard();
+      attachClientEvents();
+    } else {
+      // fallback to login if invalid state
+      currentView = "login";
+      render();
+    }
+  }
+
+  // ---------- LOGIN RENDER ----------
+  function renderLoginPage() {
+    return `
+      <div class="glass-card">
+        <h1>⚡ Pointage System</h1>
+        <div class="sub">Login to access your dashboard</div>
+        <div id="loginFormContainer">
+          <div class="form-group">
+            <label>Username</label>
+            <input type="text" id="loginUsername" placeholder="e.g., admin, client1" autocomplete="off">
+          </div>
+          <div class="form-group">
+            <label>Password</label>
+            <input type="password" id="loginPassword" placeholder="••••••">
+          </div>
+          <button id="doLoginBtn">🔐 Sign In</button>
+          <div id="loginFeedback"></div>
+          <div style="margin-top: 1rem; font-size: 0.8rem; text-align: center; color: #2c5282;">
+            Demo: admin/admin123 &nbsp;|&nbsp; client1/client123
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  function attachLoginEvents() {
+    const loginBtn = document.getElementById("doLoginBtn");
+    const userField = document.getElementById("loginUsername");
+    const passField = document.getElementById("loginPassword");
+    const feedback = document.getElementById("loginFeedback");
+
+    const performLogin = () => {
+      const username = userField.value.trim();
+      const password = passField.value.trim();
+      if (!username || !password) {
+        feedback.innerHTML = `<div class="error-message">⚠️ Please fill both fields</div>`;
+        return;
+      }
+      const foundUser = users.find(u => u.username === username && u.password === password && u.active === true);
+      if (!foundUser) {
+        feedback.innerHTML = `<div class="error-message">❌ Invalid credentials or inactive account</div>`;
+        return;
+      }
+      currentLoggedUser = { ...foundUser };
+      if (foundUser.role === "admin") {
+        currentView = "adminDashboard";
+      } else {
+        currentView = "clientDashboard";
+      }
+      render();
+    };
+
+    loginBtn.addEventListener("click", performLogin);
+    const inputs = [userField, passField];
+    inputs.forEach(inp => inp.addEventListener("keypress", (e) => { if(e.key === "Enter") performLogin(); }));
+  }
+
+  // ---------- ADMIN DASHBOARD ----------
+  function renderAdminDashboard() {
+    const activeUsers = users.filter(u => u.active === true);
+    return `
+      <div class="glass-card wide-card">
+        <div class="dashboard-header">
+          <div>
+            <h1>👑 Admin Console</h1>
+            <div class="welcome-badge">Welcome, ${currentLoggedUser.username} (Supervisor)</div>
+          </div>
+          <div class="admin-actions">
+            <button id="createAccountBtn" class="btn-secondary small-btn" style="width:auto;">➕ Create Account</button>
+            <button id="logoutAdminBtn" class="btn-outline small-btn" style="width:auto;">🚪 Logout</button>
+          </div>
+        </div>
+        <h2>📋 Registered Users (click on name to manage)</h2>
+        <div id="userListContainer" class="user-list">
+          ${activeUsers.map(user => `
+            <div class="user-item" data-userid="${user.id}">
+              <span class="user-name" data-userid="${user.id}">👤 ${user.username} (${user.role})</span>
+              <div class="user-actions">
+                <button class="small-btn manage-user-btn" data-action="delete" data-userid="${user.id}">🗑️ Delete</button>
+                <button class="small-btn manage-user-btn" data-action="sold" data-userid="${user.id}">💰 See sold</button>
+                <button class="small-btn manage-user-btn" data-action="report" data-userid="${user.id}">📊 Month report</button>
+                <button class="small-btn manage-user-btn" data-action="facture" data-userid="${user.id}">🧾 Pay facture</button>
+              </div>
+            </div>
+          `).join('')}
+          ${activeUsers.length === 0 ? '<div style="text-align:center; padding:1rem;">No active users found</div>' : ''}
+        </div>
+        <div id="adminFeedbackArea"></div>
+      </div>
+    `;
+  }
+
+  function attachAdminEvents() {
+    // logout
+    document.getElementById("logoutAdminBtn")?.addEventListener("click", () => {
+      currentLoggedUser = null;
+      currentView = "login";
+      render();
+    });
+    // create account modal (simple inline dialog)
+    const createBtn = document.getElementById("createAccountBtn");
+    createBtn?.addEventListener("click", () => showCreateAccountModal());
+
+    // attach dynamic manage buttons and user name clicks
+    document.querySelectorAll(".manage-user-btn").forEach(btn => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const action = btn.getAttribute("data-action");
+        const userId = btn.getAttribute("data-userid");
+        const targetUser = users.find(u => u.id === userId);
+        if (!targetUser) return;
+        if (action === "delete") handleAdminDelete(targetUser);
+        else if (action === "sold") handleAdminSeeSold(targetUser);
+        else if (action === "report") handleAdminSeeMonthlyReport(targetUser);
+        else if (action === "facture") handleAdminPayFacture(targetUser);
+      });
+    });
+    // click on user name -> option do delete / sold / report / pay (just alternative show)
+    document.querySelectorAll(".user-name").forEach(nameSpan => {
+      nameSpan.addEventListener("click", (e) => {
+        const userId = nameSpan.getAttribute("data-userid");
+        const user = users.find(u => u.id === userId);
+        if (user) showUserActionPanel(user);
+      });
+    });
+  }
+
+  function showCreateAccountModal() {
+    const overlay = document.createElement("div");
+    overlay.style.position = "fixed";
+    overlay.style.top = "0"; overlay.style.left = "0"; overlay.style.width = "100%"; overlay.style.height = "100%";
+    overlay.style.background = "rgba(0,0,0,0.5)"; overlay.style.backdropFilter = "blur(3px)";
+    overlay.style.display = "flex"; overlay.style.alignItems = "center"; overlay.style.justifyContent = "center"; overlay.style.zIndex = "1000";
+    const modal = document.createElement("div");
+    modal.className = "glass-card";
+    modal.style.maxWidth = "450px";
+    modal.style.margin = "1rem";
+    modal.innerHTML = `
+      <h3 style="margin-bottom:1rem;">✨ Create new account</h3>
+      <div class="form-group"><label>Username</label><input id="newUsername" placeholder="username"></div>
+      <div class="form-group"><label>Password</label><input id="newPassword" type="password"></div>
+      <div class="form-group"><label>Retype password</label><input id="newPassword2" type="password"></div>
+      <div class="form-group"><label>Admin key (BTS for admin, else blank = client)</label><input id="adminKeyInput" placeholder="Admin key"></div>
+      <button id="confirmCreateBtn">Create Account</button>
+      <button id="cancelCreateBtn" class="btn-secondary" style="margin-top:0.6rem;">Cancel</button>
+      <div id="createFeedback"></div>
+    `;
+    overlay.appendChild(modal);
+    document.body.appendChild(overlay);
+
+    const confirmBtn = modal.querySelector("#confirmCreateBtn");
+    const cancelBtn = modal.querySelector("#cancelCreateBtn");
+    const unameInp = modal.querySelector("#newUsername");
+    const pwdInp = modal.querySelector("#newPassword");
+    const pwd2Inp = modal.querySelector("#newPassword2");
+    const keyInp = modal.querySelector("#adminKeyInput");
+    const feedbackDiv = modal.querySelector("#createFeedback");
+
+    const createHandler = () => {
+      const username = unameInp.value.trim();
+      const password = pwdInp.value;
+      const repass = pwd2Inp.value;
+      const adminKey = keyInp.value.trim();
+      if (!username || !password) {
+        feedbackDiv.innerHTML = `<div class="error-message">Username & password required</div>`;
+        return;
+      }
+      if (password !== repass) {
+        feedbackDiv.innerHTML = `<div class="error-message">Passwords do not match</div>`;
+        return;
+      }
+      if (users.find(u => u.username === username)) {
+        feedbackDiv.innerHTML = `<div class="error-message">Username already exists</div>`;
+        return;
+      }
+      let role = "client";
+      let adminKeyUsed = null;
+      if (adminKey === "BTS") {
+        role = "admin";
+        adminKeyUsed = "BTS";
+      }
+      const newUser = {
+        id: "u_" + Date.now() + "_" + Math.floor(Math.random() * 10000),
+        username: username,
+        password: password,
+        role: role,
+        adminKeyUsed: adminKeyUsed,
+        sold: role === "admin" ? 0 : 0.0,
+        monthlyUsage: [],
+        active: true,
+        createdAt: new Date().toISOString()
+      };
+      addUser(newUser);
+      feedbackDiv.innerHTML = `<div class="success-message">✅ Account ${username} (${role}) created!</div>`;
+      setTimeout(() => {
+        overlay.remove();
+        render();
+      }, 1200);
+    };
+    confirmBtn.addEventListener("click", createHandler);
+    cancelBtn.addEventListener("click", () => overlay.remove());
+  }
+
+  function handleAdminDelete(user) {
+    if (user.id === currentLoggedUser.id) {
+      showAdminFeedback("❌ Cannot delete your own admin account while logged in.", "error");
+      return;
+    }
+    if (confirm(`⚠️ Permanently delete user "${user.username}"? This action cannot be undone.`)) {
+      deleteUserById(user.id);
+      showAdminFeedback(`🗑️ User ${user.username} deleted successfully.`, "success");
+      render(); // refresh list
+    }
+  }
+
+  function handleAdminSeeSold(user) {
+    let soldVal = user.sold !== undefined ? user.sold : 0;
+    showAdminFeedback(`💰 ${user.username} current balance (sold): $${soldVal.toFixed(2)}`, "info");
+  }
+
+  function handleAdminSeeMonthlyReport(user) {
+    if (!user.monthlyUsage || user.monthlyUsage.length === 0) {
+      showAdminFeedback(`📆 No monthly usage records for ${user.username}.`, "info");
+      return;
+    }
+    let reportHtml = `<strong>📋 Monthly report for ${user.username}</strong><br>`;
+    user.monthlyUsage.forEach(rec => {
+      reportHtml += `• ${rec.month}: ${rec.consumption} kWh - ${rec.paid ? '✅ Paid' : '⚠️ Unpaid'}<br>`;
+    });
+    showAdminFeedback(reportHtml, "info", true);
+  }
+
+  function handleAdminPayFacture(user) {
+    if (!user.monthlyUsage || user.monthlyUsage.length === 0) {
+      showAdminFeedback(`🧾 No factures available for ${user.username}.`, "info");
+      return;
+    }
+    const unpaidIndex = user.monthlyUsage.findIndex(m => m.paid === false);
+    if (unpaidIndex === -1) {
+      showAdminFeedback(`✅ ${user.username} has no pending factures. All paid!`, "success");
+      return;
+    }
+    const unpaid = user.monthlyUsage[unpaidIndex];
+    const amount = (unpaid.consumption * 0.15).toFixed(2); // suppose 0.15$ per kWh
+    if (confirm(`Pay facture for ${user.username} - Month: ${unpaid.month}, Consumption: ${unpaid.consumption} kWh, Amount: $${amount}. Mark as paid?`)) {
+      user.monthlyUsage[unpaidIndex].paid = true;
+      user.sold = (user.sold || 0) + parseFloat(amount);
+      updateUser(user);
+      showAdminFeedback(`✅ Facture paid! New sold for ${user.username}: $${user.sold.toFixed(2)}`, "success");
+      render();
+    }
+  }
+
+  function showUserActionPanel(user) {
+    const actions = [`Delete account`, `See sold`, `Monthly report`, `Pay facture`];
+    const actionKeys = ["delete", "sold", "report", "facture"];
+    const msg = `Manage: ${user.username}\nSelect action:\n1. Delete\n2. See sold\n3. Month report\n4. Pay facture`;
+    const choice = prompt(msg, "1");
+    if (!choice) return;
+    const idx = parseInt(choice) - 1;
+    if (idx >= 0 && idx < actionKeys.length) {
+      const act = actionKeys[idx];
+      if (act === "delete") handleAdminDelete(user);
+      else if (act === "sold") handleAdminSeeSold(user);
+      else if (act === "report") handleAdminSeeMonthlyReport(user);
+      else if (act === "facture") handleAdminPayFacture(user);
+    } else alert("Invalid option");
+  }
+
+  function showAdminFeedback(msg, type, isHtml = false) {
+    const area = document.getElementById("adminFeedbackArea");
+    if (!area) return;
+    if (isHtml) area.innerHTML = `<div class="${type === 'error' ? 'error-message' : type === 'success' ? 'success-message' : 'glass-card'}" style="padding:0.8rem;">${msg}</div>`;
+    else area.innerHTML = `<div class="${type === 'error' ? 'error-message' : type === 'success' ? 'success-message' : 'glass-card'}" style="padding:0.8rem;">${msg}</div>`;
+    setTimeout(() => { if(area) area.innerHTML = ""; }, 4000);
+  }
+
+  // ---------- CLIENT DASHBOARD ----------
+  function renderClientDashboard() {
+    const client = currentLoggedUser;
+    const sold = client.sold !== undefined ? client.sold : 0;
+    const monthly = client.monthlyUsage || [];
+    return `
+      <div class="glass-card wide-card">
+        <div class="dashboard-header">
+          <div>
+            <h1>📱 Client Area</h1>
+            <div class="welcome-badge">Hello, ${client.username}</div>
+          </div>
+          <button id="logoutClientBtn" class="btn-outline small-btn" style="width:auto;">🚪 Logout</button>
+        </div>
+        <div class="client-panel">
+          <h2>💰 Your Balance (Sold)</h2>
+          <div class="balance">$${sold.toFixed(2)}</div>
+          <hr>
+          <h2>📅 Monthly Usage Report</h2>
+          ${monthly.length === 0 ? '<p>No usage records yet.</p>' : `
+            <div class="stats-grid">
+              ${monthly.map(m => `
+                <div class="stat-card">
+                  <strong>${m.month}</strong><br>
+                  Consumption: ${m.consumption} kWh<br>
+                  Status: ${m.paid ? '<span style="color:green;">✓ Paid</span>' : '<span style="color:#b45309;">⏳ Unpaid</span>'}
+                </div>
+              `).join('')}
+            </div>
+          `}
+          <hr>
+          <div style="display: flex; gap: 1rem; flex-wrap: wrap; margin-top: 1rem;">
+            <button id="stopAccountBtn" class="btn-secondary" style="width:auto;">⛔ Stop / Delete Account</button>
+            <button id="refreshClientBtn" class="btn-outline" style="width:auto;">🔄 Refresh</button>
+          </div>
+          <div id="clientFeedback"></div>
+        </div>
+      </div>
+    `;
+  }
+
+  function attachClientEvents() {
+    document.getElementById("logoutClientBtn")?.addEventListener("click", () => {
+      currentLoggedUser = null;
+      currentView = "login";
+      render();
+    });
+    const stopBtn = document.getElementById("stopAccountBtn");
+    stopBtn?.addEventListener("click", () => {
+      if (confirm(`⚠️ Are you sure you want to DELETE or STOP your account "${currentLoggedUser.username}"? This action is permanent.`)) {
+        deleteUserById(currentLoggedUser.id);
+        alert("Your account has been deleted.");
+        currentLoggedUser = null;
+        currentView = "login";
+        render();
+      }
+    });
+    const refreshBtn = document.getElementById("refreshClientBtn");
+    refreshBtn?.addEventListener("click", () => {
+      const refreshedUser = users.find(u => u.id === currentLoggedUser.id);
+      if (refreshedUser && refreshedUser.active) {
+        currentLoggedUser = refreshedUser;
+        render();
+      } else {
+        alert("Session expired. Logging out.");
+        currentLoggedUser = null;
+        currentView = "login";
+        render();
+      }
+    });
+    const feedbackDiv = document.getElementById("clientFeedback");
+    if (feedbackDiv) setTimeout(() => feedbackDiv.innerHTML = "", 3000);
+  }
+
+  // INITIAL APP
+  render();
+</script>
 </body>
 </html>
