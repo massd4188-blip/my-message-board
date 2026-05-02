@@ -1,17 +1,27 @@
 // GitHub configuration
 const GITHUB_USERNAME = "massd4188-blip";
 const REPO_NAME = "my-message-board";
-const USERS_FILE = "users.json";
 
 // Global variables
 let currentUser = null;
 let currentUserData = null;
 
-// API Functions to read from GitHub
+// ============ HELPER FUNCTIONS ============
+
+// Hash password using SHA-256
+async function hashPassword(password) {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(password);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+// Fetch data from GitHub
 async function fetchFromGitHub(filePath) {
-    const url = `https://raw.githubusercontent.com/${GITHUB_USERNAME}/${REPO_NAME}/main/${filePath}`;
+    const url = `https://raw.githubusercontent.com/${GITHUB_USERNAME}/${REPO_NAME}/main/${filePath}?t=${new Date().getTime()}`;
     try {
-        const response = await fetch(url + '?t=' + new Date().getTime()); // Prevent cache
+        const response = await fetch(url);
         if (response.ok) {
             return await response.json();
         }
@@ -22,103 +32,27 @@ async function fetchFromGitHub(filePath) {
     }
 }
 
-// Hash password
-async function hashPassword(password) {
-    const encoder = new TextEncoder();
-    const data = encoder.encode(password);
-    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+// Fetch raw text file from GitHub
+async function fetchTextFromGitHub(filePath) {
+    const url = `https://raw.githubusercontent.com/${GITHUB_USERNAME}/${REPO_NAME}/main/${filePath}?t=${new Date().getTime()}`;
+    try {
+        const response = await fetch(url);
+        if (response.ok) {
+            return await response.text();
+        }
+        return null;
+    } catch (error) {
+        console.error('Error fetching text:', error);
+        return null;
+    }
 }
 
-// Login user (reads from GitHub)
-async function loginUser(username, password) {
-    const users = await fetchFromGitHub(USERS_FILE);
-    if (!users) {
-        document.getElementById('loginError').textContent = 'Cannot connect to server. Please try again.';
-        return false;
-    }
-    
-    const user = users[username];
-    if (!user) {
-        document.getElementById('loginError').textContent = 'Invalid username or password!';
-        return false;
-    }
-    
-    const hashedPassword = await hashPassword(password);
-    if (user.password !== hashedPassword) {
-        document.getElementById('loginError').textContent = 'Invalid username or password!';
-        return false;
-    }
-    
-    currentUser = username;
-    currentUserData = user;
-    sessionStorage.setItem('currentUser', JSON.stringify({username, role: user.role}));
-    
-    if (user.role === 'admin') {
-        window.location.href = 'admin.html';
-    } else {
-        window.location.href = 'client.html';
-    }
-    return true;
+// Escape HTML to prevent XSS
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
 }
-
-// Register user (stores locally, needs manual approval or we'll just use Python registration)
-async function registerUser(username, password, confirmPassword, dob) {
-    if (password !== confirmPassword) {
-        document.getElementById('registerError').textContent = 'Passwords do not match!';
-        return false;
-    }
-    
-    if (username.length < 3 || username.length > 20) {
-        document.getElementById('registerError').textContent = 'Username must be 3-20 characters!';
-        return false;
-    }
-    
-    if (password.length < 6) {
-        document.getElementById('registerError').textContent = 'Password must be at least 6 characters!';
-        return false;
-    }
-    
-    // Since we can't write to GitHub from client-side JavaScript,
-    // we'll show a message to register via Python
-    document.getElementById('registerError').innerHTML = `
-        ⚠️ Registration is done through the Python script.<br>
-        Please run: python message_panel.py<br>
-        Or ask the admin to create an account for you.
-    `;
-    return false;
-}
-
-// Show/Hide tabs
-function showTab(tabName) {
-    document.querySelectorAll('.tab-content').forEach(tab => {
-        tab.classList.remove('active');
-    });
-    document.querySelectorAll('.tab-btn').forEach(btn => {
-        btn.classList.remove('active');
-    });
-    
-    document.getElementById(`${tabName}-tab`).classList.add('active');
-    event.target.classList.add('active');
-}
-
-// Event Listeners
-document.getElementById('loginForm')?.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const username = document.getElementById('loginUsername').value;
-    const password = document.getElementById('loginPassword').value;
-    await loginUser(username, password);
-});
-
-document.getElementById('registerForm')?.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const username = document.getElementById('regUsername').value;
-    const password = document.getElementById('regPassword').value;
-    const confirmPassword = document.getElementById('regConfirmPassword').value;
-    const dob = document.getElementById('regDob').value;
-    await registerUser(username, password, confirmPassword, dob);
-});
 
 // Logout function
 function logout() {
@@ -126,50 +60,235 @@ function logout() {
     window.location.href = 'index.html';
 }
 
-// Load messages for client
-async function loadClientMessages(username) {
-    const url = `https://raw.githubusercontent.com/${GITHUB_USERNAME}/${REPO_NAME}/main/messages/${username}_messages.txt?t=${new Date().getTime()}`;
-    try {
-        const response = await fetch(url);
-        if (response.ok) {
-            const text = await response.text();
-            return text;
+// ============ INDEX PAGE (LOGIN/REGISTER) ============
+
+if (window.location.pathname.includes('index.html') || window.location.pathname === '/' || window.location.pathname.endsWith('/my-message-board/')) {
+    
+    // Tab switching
+    window.showTab = function(tabName) {
+        document.querySelectorAll('.tab-content').forEach(tab => {
+            tab.classList.remove('active');
+        });
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        
+        document.getElementById(`${tabName}-tab`).classList.add('active');
+        event.target.classList.add('active');
+    };
+    
+    // Login function
+    window.loginUser = async function() {
+        const username = document.getElementById('loginUsername').value;
+        const password = document.getElementById('loginPassword').value;
+        const errorDiv = document.getElementById('loginError');
+        
+        if (!username || !password) {
+            errorDiv.textContent = 'Please enter username and password!';
+            return;
         }
-        return null;
-    } catch (error) {
-        console.error('Error loading messages:', error);
-        return null;
+        
+        const users = await fetchFromGitHub('users.json');
+        if (!users) {
+            errorDiv.textContent = 'Cannot connect to server. Please try again.';
+            return;
+        }
+        
+        const user = users[username];
+        if (!user) {
+            errorDiv.textContent = 'Invalid username or password!';
+            return;
+        }
+        
+        const hashedPassword = await hashPassword(password);
+        if (user.password !== hashedPassword) {
+            errorDiv.textContent = 'Invalid username or password!';
+            return;
+        }
+        
+        // Store user info
+        sessionStorage.setItem('currentUser', JSON.stringify({
+            username: username,
+            role: user.role
+        }));
+        
+        // Redirect based on role
+        if (user.role === 'admin') {
+            window.location.href = 'admin.html';
+        } else {
+            window.location.href = 'client.html';
+        }
+    };
+    
+    // Register function (note: only shows message since writing requires Python)
+    window.registerUser = async function() {
+        document.getElementById('registerError').innerHTML = `
+            ⚠️ Registration is done through the Python script.<br>
+            Please run: python message_panel.py<br>
+            Or ask the admin to create an account for you.
+        `;
+    };
+    
+    // Check if already logged in
+    const savedUser = JSON.parse(sessionStorage.getItem('currentUser'));
+    if (savedUser) {
+        if (savedUser.role === 'admin') {
+            window.location.href = 'admin.html';
+        } else {
+            window.location.href = 'client.html';
+        }
     }
 }
 
-// Client Dashboard
+// ============ ADMIN PAGE ============
+
+if (window.location.pathname.includes('admin.html')) {
+    
+    // Check authentication
+    const savedUser = JSON.parse(sessionStorage.getItem('currentUser'));
+    if (!savedUser || savedUser.role !== 'admin') {
+        // Not logged in as admin, redirect to login
+        window.location.href = 'index.html';
+    }
+    
+    // Display admin name
+    document.getElementById('adminName').textContent = savedUser.username;
+    
+    // Load admin data
+    loadAdminData();
+    
+    async function loadAdminData() {
+        const users = await fetchFromGitHub('users.json');
+        if (!users) {
+            document.getElementById('userList').innerHTML = '<div class="error">Error loading users</div>';
+            return;
+        }
+        
+        // Calculate stats
+        const userList = Object.keys(users).filter(u => u !== 'admin');
+        document.getElementById('totalUsers').textContent = userList.length;
+        
+        // Count total messages (simplified)
+        let totalMessages = 0;
+        for (const username of userList) {
+            const messages = await fetchTextFromGitHub(`messages/${username}_messages.txt`);
+            if (messages) {
+                totalMessages += messages.split('\n').filter(l => l.trim()).length;
+            }
+        }
+        document.getElementById('totalMessages').textContent = totalMessages;
+        
+        // Create user list
+        if (userList.length === 0) {
+            document.getElementById('userList').innerHTML = '<p>No users registered yet.</p>';
+        } else {
+            document.getElementById('userList').innerHTML = userList.map(username => `
+                <div class="user-card">
+                    <strong>${escapeHtml(username)}</strong>
+                    <div class="user-stats">
+                        Messages: ${users[username].messages_left || 0}/10 left
+                    </div>
+                    <button onclick="viewUserMessages('${username}')" class="btn-user">View Messages</button>
+                    <button onclick="resetUserMessages('${username}')" class="btn-reset">Reset</button>
+                </div>
+            `).join('');
+        }
+    }
+    
+    // View user messages
+    window.viewUserMessages = async function(username) {
+        document.getElementById('modalUsername').textContent = username;
+        const messagesList = document.getElementById('userMessages');
+        messagesList.innerHTML = '<div class="loading">Loading messages...</div>';
+        
+        const messages = await fetchTextFromGitHub(`messages/${username}_messages.txt`);
+        
+        if (!messages) {
+            messagesList.innerHTML = '<div class="message">No messages from this user yet.</div>';
+        } else {
+            const lines = messages.split('\n').filter(line => line.trim());
+            if (lines.length === 0) {
+                messagesList.innerHTML = '<div class="message">No messages from this user yet.</div>';
+            } else {
+                messagesList.innerHTML = lines.map(line => {
+                    const match = line.match(/\[(.*?)\]\s*(.*)/);
+                    if (match) {
+                        return `
+                            <div class="message">
+                                <div class="timestamp">📅 ${match[1]}</div>
+                                <div class="text">${escapeHtml(match[2])}</div>
+                            </div>
+                        `;
+                    }
+                    return `<div class="message"><div class="text">${escapeHtml(line)}</div></div>`;
+                }).join('');
+            }
+        }
+        
+        document.getElementById('userModal').style.display = 'block';
+    };
+    
+    // Reset user messages (note: requires Python script for actual update)
+    window.resetUserMessages = function(username) {
+        alert(`To reset ${username}'s messages, please use the Python script.\n\nAdmin can also do this from the admin panel in the Python script.`);
+    };
+    
+    // Reset all users
+    window.resetAllUsers = function() {
+        alert('To reset all users, please use the Python script admin panel.');
+    };
+    
+    // Close modal
+    window.closeModal = function() {
+        document.getElementById('userModal').style.display = 'none';
+    };
+    
+    // Refresh data every 10 seconds
+    setInterval(loadAdminData, 10000);
+}
+
+// ============ CLIENT PAGE ============
+
 if (window.location.pathname.includes('client.html')) {
+    
+    // Check authentication
     const savedUser = JSON.parse(sessionStorage.getItem('currentUser'));
     if (!savedUser || savedUser.role !== 'client') {
         window.location.href = 'index.html';
     }
     
+    // Display client name
     document.getElementById('clientName').textContent = savedUser.username;
-    loadClientDashboard();
     
-    async function loadClientDashboard() {
-        // Get user data from GitHub
-        const users = await fetchFromGitHub(USERS_FILE);
-        const user = users[savedUser.username];
+    // Load client data
+    loadClientData();
+    
+    async function loadClientData() {
+        const users = await fetchFromGitHub('users.json');
+        if (!users || !users[savedUser.username]) {
+            return;
+        }
         
-        if (user) {
-            document.getElementById('messagesLeft').textContent = user.messages_left;
-            const fillPercent = (user.messages_left / 10) * 100;
-            document.getElementById('counterFill').style.width = `${fillPercent}%`;
-            
-            if (user.messages_left <= 0) {
-                document.getElementById('sendBtn').disabled = true;
-                document.getElementById('sendBtn').textContent = 'No Messages Left';
-            }
+        const user = users[savedUser.username];
+        const messagesLeft = user.messages_left || 0;
+        
+        // Update counter
+        document.getElementById('messagesLeft').textContent = messagesLeft;
+        const fillPercent = (messagesLeft / 10) * 100;
+        document.getElementById('counterFill').style.width = `${fillPercent}%`;
+        
+        // Disable send button if no messages left
+        const sendBtn = document.getElementById('sendBtn');
+        if (messagesLeft <= 0) {
+            sendBtn.disabled = true;
+            sendBtn.textContent = 'No Messages Left';
+        } else {
+            sendBtn.disabled = false;
+            sendBtn.textContent = 'Send Message';
         }
         
         // Load message history
-        const messages = await loadClientMessages(savedUser.username);
+        const messages = await fetchTextFromGitHub(`messages/${savedUser.username}_messages.txt`);
         const messageHistory = document.getElementById('messageHistory');
         
         if (!messages) {
@@ -196,94 +315,15 @@ if (window.location.pathname.includes('client.html')) {
         }
     }
     
-    // Note: Sending messages requires the Python script
-    document.getElementById('messageForm').addEventListener('submit', (e) => {
-        e.preventDefault();
+    // Send message (shows instructions since writing requires Python)
+    window.sendMessage = function() {
         document.getElementById('messageError').innerHTML = `
             ⚠️ To send messages, please use the Python script:<br>
             Run: python message_panel.py<br>
             Then login with your username and password.
         `;
-    });
+    };
     
     // Auto-refresh every 10 seconds
-    setInterval(loadClientDashboard, 10000);
-}
-
-// Admin Dashboard
-if (window.location.pathname.includes('admin.html')) {
-    const savedUser = JSON.parse(sessionStorage.getItem('currentUser'));
-    if (!savedUser || savedUser.role !== 'admin') {
-        window.location.href = 'index.html';
-    }
-    
-    document.getElementById('adminName').textContent = savedUser.username;
-    loadAdminData();
-    
-    async function loadAdminData() {
-        const users = await fetchFromGitHub(USERS_FILE);
-        if (!users) return;
-        
-        const totalUsers = Object.keys(users).filter(u => u !== 'admin').length;
-        document.getElementById('totalUsers').textContent = totalUsers;
-        
-        // Calculate total messages (this would require loading all message files - simplified)
-        document.getElementById('totalMessages').textContent = 'View details';
-        
-        const userList = document.getElementById('userList');
-        const userButtons = Object.keys(users)
-            .filter(username => username !== 'admin')
-            .map(username => `<button class="btn-user" onclick="viewUserMessages('${username}')">${username}</button>`)
-            .join('');
-        
-        userList.innerHTML = userButtons || '<p>No users yet</p>';
-    }
-    
-    window.viewUserMessages = async function(username) {
-        document.getElementById('modalUsername').textContent = username;
-        const messagesList = document.getElementById('userMessages');
-        
-        const url = `https://raw.githubusercontent.com/${GITHUB_USERNAME}/${REPO_NAME}/main/messages/${username}_messages.txt?t=${new Date().getTime()}`;
-        try {
-            const response = await fetch(url);
-            if (response.ok) {
-                const text = await response.text();
-                const lines = text.split('\n').filter(line => line.trim());
-                if (lines.length === 0) {
-                    messagesList.innerHTML = '<div class="message">No messages from this user yet.</div>';
-                } else {
-                    messagesList.innerHTML = lines.map(line => {
-                        const match = line.match(/\[(.*?)\]\s*(.*)/);
-                        if (match) {
-                            return `
-                                <div class="message">
-                                    <div class="timestamp">📅 ${match[1]}</div>
-                                    <div class="text">${escapeHtml(match[2])}</div>
-                                </div>
-                            `;
-                        }
-                        return `<div class="message"><div class="text">${escapeHtml(line)}</div></div>`;
-                    }).join('');
-                }
-            } else {
-                messagesList.innerHTML = '<div class="message">No messages from this user yet.</div>';
-            }
-        } catch (error) {
-            messagesList.innerHTML = '<div class="message">Error loading messages.</div>';
-        }
-        
-        document.getElementById('userModal').style.display = 'block';
-    };
-    
-    window.closeModal = function() {
-        document.getElementById('userModal').style.display = 'none';
-    };
-    
-    setInterval(loadAdminData, 10000);
-}
-
-function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
+    setInterval(loadClientData, 10000);
 }
