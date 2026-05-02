@@ -7,6 +7,13 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
+    <script>
+    // Check if user is logged in as admin
+    const savedUser = JSON.parse(sessionStorage.getItem('currentUser'));
+    if (!savedUser || savedUser.role !== 'admin') {
+        window.location.href = 'index.html';
+    }
+</script>
     <div class="container">
         <div class="header">
             <h1>👑 Admin Dashboard</h1>
