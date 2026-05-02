@@ -14,9 +14,9 @@
   },
   "superadmin": {
     "password": "6856d6de0c7120e71cb764850b959038615bff00b4cd21cc8c7ec816f4937518",
-    "role": "client",
+    "role": "admin",
     "created": "2026-05-02T09:52:27.916268",
-    "messages_left": 10,
+    "messages_left":"unlimited",
     "dob": "2000-01-01"
   }
 }
