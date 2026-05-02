@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Dashboard</title>
+    <title>Admin Dashboard - Message Board</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -28,19 +28,25 @@
         </div>
 
         <div class="admin-panel">
-            <h2>User Management</h2>
+            <h2>📊 User Management</h2>
             <div class="user-list" id="userList">
                 Loading users...
             </div>
         </div>
 
-        <div class="modal" id="userModal" style="display:none">
-            <div class="modal-content">
-                <span class="close" onclick="closeModal()">&times;</span>
-                <h2>User Messages: <span id="modalUsername"></span></h2>
-                <div class="messages-list" id="userMessages">
-                    Loading messages...
-                </div>
+        <div class="admin-actions">
+            <h2>⚡ Admin Actions</h2>
+            <button onclick="resetAllUsers()" class="btn-primary">Reset All Users (10 messages each)</button>
+        </div>
+    </div>
+
+    <!-- Modal for viewing user messages -->
+    <div id="userModal" class="modal" style="display:none">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal()">&times;</span>
+            <h2>User Messages: <span id="modalUsername"></span></h2>
+            <div id="userMessages" class="messages-list">
+                Loading messages...
             </div>
         </div>
     </div>
