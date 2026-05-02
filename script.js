@@ -42,47 +42,32 @@ async function hashPassword(password) {
 window.loginUser = async function() {
     const username = document.getElementById('loginUsername').value;
     const password = document.getElementById('loginPassword').value;
-    const errorDiv = document.getElementById('loginError');
     
-    if (!username || !password) {
-        errorDiv.textContent = 'Please enter username and password!';
-        return;
-    }
+    // Use the global USERS_DATABASE from users.js
+    const user = USERS_DATABASE[username];
     
-    const users = await fetchUsers();
-    if (!users) {
-        errorDiv.textContent = 'Cannot load users. Please refresh the page.';
-        console.error('Users file not found or inaccessible');
-        return;
-    }
-    
-    const user = users[username];
     if (!user) {
-        errorDiv.textContent = 'Invalid username or password!';
+        alert('Invalid username or password');
         return;
     }
     
     const hashedPassword = await hashPassword(password);
     
-    if (user.password !== hashedPassword) {
-        errorDiv.textContent = 'Invalid username or password!';
-        return;
-    }
-    
-    // Store user info
-    sessionStorage.setItem('currentUser', JSON.stringify({
-        username: username,
-        role: user.role
-    }));
-    
-    // Redirect based on role
-    if (user.role === 'admin') {
-        window.location.href = 'admin.html';
+    if (user.password === hashedPassword) {
+        sessionStorage.setItem('currentUser', JSON.stringify({
+            username: username,
+            role: user.role
+        }));
+        
+        if (user.role === 'admin') {
+            window.location.href = 'admin.html';
+        } else {
+            window.location.href = 'client.html';
+        }
     } else {
-        window.location.href = 'client.html';
+        alert('Invalid username or password');
     }
 };
-
 // Register function
 window.registerUser = async function() {
     const errorDiv = document.getElementById('registerError');
