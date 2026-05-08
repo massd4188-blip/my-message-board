@@ -1,102 +1,65 @@
-// GitHub Pages configuration - FETCH FROM SAME DOMAIN
-let currentUser = null;
+// GitHub configuration - REPLACE WITH YOUR INFO
+const GITHUB_USERNAME = 'massd4188-blip';
+const GITHUB_REPO = 'my-message-board';
+const DATA_FILE = 'data.txt';
 
-// Helper function to fetch JSON from same domain
-async function fetchUsers() {
+async function fetchScans() {
     try {
-        // Fetch from same directory as the website
-        const response = await fetch('./users.json?t=' + Date.now());
-        if (response.ok) {
-            return await response.json();
+        const url = `https://raw.githubusercontent.com/${GITHUB_USERNAME}/${GITHUB_REPO}/main/${DATA_FILE}`;
+        const response = await fetch(url);
+        
+        if (!response.ok) {
+            throw new Error('Failed to fetch data');
         }
-        throw new Error('Failed to fetch users.json');
+        
+        const text = await response.text();
+        parseAndDisplayData(text);
+        
+        document.getElementById('lastUpdated').textContent = new Date().toLocaleString();
     } catch (error) {
-        console.error('Error fetching users:', error);
-        return null;
+        console.error('Error:', error);
+        document.getElementById('scanTableBody').innerHTML = 
+            '<tr><td colspan="2">Error loading data. Make sure data.txt exists.</td></tr>';
     }
 }
 
-// Helper function to fetch text files from same domain
-async function fetchMessages(username) {
-    try {
-        const response = await fetch(`./messages/${username}_messages.txt?t=${Date.now()}`);
-        if (response.ok) {
-            return await response.text();
+function parseAndDisplayData(data) {
+    const lines = data.trim().split('\n');
+    const scans = [];
+    
+    for (const line of lines) {
+        if (line.trim()) {
+            const [timestamp, uid] = line.split(',');
+            if (uid) {
+                scans.push({ timestamp: timestamp || 'Unknown', uid: uid.trim() });
+            }
         }
-        return null;
-    } catch (error) {
-        return null;
     }
-}
-
-// Hash password using SHA-256 (must match Python's method)
-async function hashPassword(password) {
-    const encoder = new TextEncoder();
-    const data = encoder.encode(password);
-    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-}
-
-// Login function
-window.loginUser = async function() {
-    const username = document.getElementById('loginUsername').value;
-    const password = document.getElementById('loginPassword').value;
     
-    // Use the global USERS_DATABASE from users.js
-    const user = USERS_DATABASE[username];
+    // Update stats
+    document.getElementById('totalScans').textContent = scans.length;
     
-    if (!user) {
-        alert('Invalid username or password');
+    if (scans.length > 0) {
+        document.getElementById('lastScan').textContent = scans[scans.length - 1].uid;
+    }
+    
+    // Display in table (show last 50)
+    const tableBody = document.getElementById('scanTableBody');
+    const recentScans = scans.reverse().slice(0, 50);
+    
+    if (recentScans.length === 0) {
+        tableBody.innerHTML = '<tr><td colspan="2">No scans recorded yet</td></tr>';
         return;
     }
     
-    const hashedPassword = await hashPassword(password);
-    
-    if (user.password === hashedPassword) {
-        sessionStorage.setItem('currentUser', JSON.stringify({
-            username: username,
-            role: user.role
-        }));
-        
-        if (user.role === 'admin') {
-            window.location.href = 'admin.html';
-        } else {
-            window.location.href = 'client.html';
-        }
-    } else {
-        alert('Invalid username or password');
-    }
-};
-// Register function
-window.registerUser = async function() {
-    const errorDiv = document.getElementById('registerError');
-    errorDiv.innerHTML = `
-        ⚠️ Please use the Python script to register.<br>
-        Run: python message_panel.py<br>
-        Then choose option 2 to register.
-    `;
-};
-
-// Tab switching
-window.showTab = function(tabName) {
-    document.querySelectorAll('.tab-content').forEach(tab => {
-        tab.classList.remove('active');
-    });
-    document.querySelectorAll('.tab-btn').forEach(btn => {
-        btn.classList.remove('active');
-    });
-    
-    document.getElementById(`${tabName}-tab`).classList.add('active');
-    event.target.classList.add('active');
-};
-
-// Check if already logged in
-const savedUser = JSON.parse(sessionStorage.getItem('currentUser'));
-if (savedUser && (window.location.pathname.includes('index.html') || window.location.pathname === '/' || window.location.pathname.endsWith('/my-message-board/'))) {
-    if (savedUser.role === 'admin') {
-        window.location.href = 'admin.html';
-    } else {
-        window.location.href = 'client.html';
-    }
+    tableBody.innerHTML = recentScans.map(scan => `
+        <tr>
+            <td>${scan.timestamp}</td>
+            <td><code>${scan.uid}</code></td>
+        </tr>
+    `).join('');
 }
+
+// Auto-refresh every 10 seconds
+fetchScans();
+setInterval(fetchScans, 10000);
