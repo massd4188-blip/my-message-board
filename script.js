@@ -1,15 +1,16 @@
-// GitHub configuration - REPLACE WITH YOUR INFO
+// script.js - Place in your GitHub repository
 const GITHUB_USERNAME = 'massd4188-blip';
 const GITHUB_REPO = 'my-message-board';
 const DATA_FILE = 'data.txt';
 
 async function fetchScans() {
     try {
+        // Use the raw GitHub URL for the file
         const url = `https://raw.githubusercontent.com/${GITHUB_USERNAME}/${GITHUB_REPO}/main/${DATA_FILE}`;
         const response = await fetch(url);
         
         if (!response.ok) {
-            throw new Error('Failed to fetch data');
+            throw new Error(`HTTP ${response.status}`);
         }
         
         const text = await response.text();
@@ -28,24 +29,33 @@ function parseAndDisplayData(data) {
     const scans = [];
     
     for (const line of lines) {
+        // Skip comment lines (starting with #)
+        if (line.startsWith('#')) continue;
+        
         if (line.trim()) {
-            const [timestamp, uid] = line.split(',');
-            if (uid) {
-                scans.push({ timestamp: timestamp || 'Unknown', uid: uid.trim() });
+            const parts = line.split(',');
+            if (parts.length >= 2) {
+                scans.push({ 
+                    timestamp: parts[0], 
+                    uid: parts.slice(1).join(',') 
+                });
+            } else if (parts.length == 1) {
+                scans.push({ 
+                    timestamp: 'Unknown', 
+                    uid: parts[0] 
+                });
             }
         }
     }
     
-    // Update stats
     document.getElementById('totalScans').textContent = scans.length;
     
     if (scans.length > 0) {
         document.getElementById('lastScan').textContent = scans[scans.length - 1].uid;
     }
     
-    // Display in table (show last 50)
     const tableBody = document.getElementById('scanTableBody');
-    const recentScans = scans.reverse().slice(0, 50);
+    const recentScans = [...scans].reverse().slice(0, 50);
     
     if (recentScans.length === 0) {
         tableBody.innerHTML = '<tr><td colspan="2">No scans recorded yet</td></tr>';
