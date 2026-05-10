@@ -344,11 +344,11 @@
     const REPO_NAME = 'my-message-board';                // e.g., 'rfid-door-access'
     const FILE_PATH = 'data.txt';                      // File name
     
-    // Raw GitHub URL (no token needed for public repos)
-    const RAW_GITHUB_URL = `https://raw.githubusercontent.com/${GITHUB_USERNAME}/${REPO_NAME}/main/${FILE_PATH}?t=${Date.now()}`;
-    
-    // Auto-refresh interval (30 seconds)
-    const AUTO_REFRESH_INTERVAL = 30000;
+   // GitHub Pages URL with cache buster
+const GITHUB_PAGES_URL = `https://${GITHUB_USERNAME}.github.io/${REPO_NAME}/data.txt?t=${Date.now()}`;
+
+// Auto-refresh interval (10 seconds for faster updates)
+const AUTO_REFRESH_INTERVAL = 10000;
     
     // ============================================
     // LOAD ACCESS LOG FROM GITHUB
@@ -359,13 +359,13 @@
       
       systemStatus.textContent = 'Connecting...';
       
-      fetch(RAW_GITHUB_URL)
-        .then(response => {
-          if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-          }
-          return response.text();
-        })
+     fetch(GITHUB_PAGES_URL)
+  .then(response => {
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    return response.text();
+  })
         .then(textData => {
           // Parse data.txt format
           const lines = textData.trim().split('\n');
