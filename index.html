@@ -332,25 +332,26 @@
     
     <footer>
       <p>🔒 RFID Access Control System | Raspberry Pi Pico + Python</p>
-      <p>Data sourced from Google Sheets</p>
+      <p>Data sourced from GitHub</p>
     </footer>
   </div>
   
   <script>
     // ============================================
-    // CONFIGURATION - YOUR PUBLISHED GOOGLE SHEET
+    // CONFIGURATION - YOUR GITHUB DETAILS
     // ============================================
-    // Your Publish to Web URL (from File → Share → Publish to web)
-    const PUBLISHED_SHEET_ID = '2PACX-1vR51VG47XOXULScQp2pZQ61gdOYY1HCLB4c3gkoMXr_ELqx148qzW0u8QEyRJchKfn3h66pPVuPXMD_';
+    const GITHUB_USERNAME = 'YOUR_USERNAME';           // e.g., 'donmass'
+    const REPO_NAME = 'YOUR_REPO_NAME';                // e.g., 'rfid-door-access'
+    const FILE_PATH = 'data.txt';                      // File name
     
-    // Use CSV format for easier parsing
-    const SHEET_URL = `https://docs.google.com/spreadsheets/d/e/${PUBLISHED_SHEET_ID}/pub?gid=0&single=true&output=csv`;
+    // Raw GitHub URL (no token needed for public repos)
+    const RAW_GITHUB_URL = `https://raw.githubusercontent.com/${GITHUB_USERNAME}/${REPO_NAME}/main/${FILE_PATH}`;
     
     // Auto-refresh interval (30 seconds)
     const AUTO_REFRESH_INTERVAL = 30000;
     
     // ============================================
-    // LOAD ACCESS LOG FROM GOOGLE SHEETS (CSV)
+    // LOAD ACCESS LOG FROM GITHUB
     // ============================================
     function loadAccessLog() {
       const tbody = document.getElementById('logEntries');
@@ -358,18 +359,21 @@
       
       systemStatus.textContent = 'Connecting...';
       
-      fetch(SHEET_URL)
+      fetch(RAW_GITHUB_URL)
         .then(response => {
           if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
           }
           return response.text();
         })
-        .then(csvText => {
-          // Parse CSV
-          const lines = csvText.trim().split('\n');
+        .then(textData => {
+          // Parse data.txt format
+          const lines = textData.trim().split('\n');
           
-          if (lines.length < 2) {
+          // Skip comment lines (starting with #)
+          const dataLines = lines.filter(line => line.trim() && !line.trim().startsWith('#'));
+          
+          if (dataLines.length === 0) {
             tbody.innerHTML = `
               <tr>
                 <td colspan="4" class="loading">
@@ -389,20 +393,19 @@
           let grantedCount = 0;
           let deniedCount = 0;
           
-          // Skip header row (first line)
-          const dataLines = lines.slice(1);
+          // Show last 100 entries, reversed (newest first)
           const displayRows = dataLines.slice(-100).reverse();
           
           displayRows.forEach((line, index) => {
             const rowNum = index + 1;
             
-            // Parse CSV line - split by comma and clean quotes
-            const parts = line.split(',').map(cell => cell.trim().replace(/^"|"$/g, ''));
+            // Parse format: "2026-05-10 15:10:50 | 5A 42 13 07 | GRANTED"
+            const parts = line.split('|').map(part => part.trim());
             
             if (parts.length >= 3) {
-              const timestamp = parts[0] || 'N/A';
-              const uid = parts[1] || 'N/A';
-              const access = parts[2] || 'Unknown';
+              const timestamp = parts[0];
+              const uid = parts[1];
+              const access = parts[2];
               
               // Count statistics
               totalScans++;
@@ -415,7 +418,7 @@
               const tr = document.createElement('tr');
               tr.innerHTML = `
                 <td>${rowNum}</td>
-                <td>${formatTimestamp(timestamp)}</td>
+                <td>${timestamp}</td>
                 <td><span class="uid-code">${uid}</span></td>
                 <td>
                   <div class="${access.toUpperCase() === 'GRANTED' ? 'access-granted' : 'access-denied'}">
@@ -442,5 +445,43 @@
             <tr>
               <td colspan="4" class="loading">
                 ❌ Error loading data.<br>
-                Make sure you Published to web: File → Share → Publish to web
-              </td><
+                Check:<br>
+                1. GitHub repo is <strong>Public</strong><br>
+                2. File path is correct: ${FILE_PATH}<br>
+                3. Username and repo name are correct: <strong>${GITHUB_USERNAME}/${REPO_NAME}</strong>
+              </td>
+            </tr>
+          `;
+          systemStatus.textContent = '❌ Offline';
+          updateStats(0, 0, 0);
+        });
+    }
+    
+    // ============================================
+    // UPDATE STATISTICS
+    // ============================================
+    function updateStats(total, granted, denied) {
+      document.getElementById('totalAccess').textContent = total;
+      document.getElementById('grantedAccess').textContent = granted;
+      document.getElementById('deniedAccess').textContent = denied;
+    }
+    
+    // ============================================
+    // AUTO-REFRESH
+    // ============================================
+    function autoRefresh() {
+      loadAccessLog();
+    }
+    
+    // ============================================
+    // INITIALIZATION
+    // ============================================
+    document.addEventListener('DOMContentLoaded', () => {
+      loadAccessLog();
+      
+      // Auto-refresh every 30 seconds
+      setInterval(autoRefresh, AUTO_REFRESH_INTERVAL);
+    });
+  </script>
+</body>
+</html>
