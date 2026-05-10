@@ -1,77 +1,446 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>RFID Door Access Log</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🔐 RFID Door Access Log</title>
   <style>
-    body { font-family: Arial; max-width: 800px; margin: 50px auto; }
-    table { width: 100%; border-collapse: collapse; }
-    th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
-    th { background-color: #4CAF50; color: white; }
-    tr:nth-child(even) { background-color: #f2f2f2; }
-    .granted { color: green; font-weight: bold; }
-    .denied { color: red; font-weight: bold; }
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+    
+    .container {
+      max-width: 1000px;
+      margin: 0 auto;
+    }
+    
+    header {
+      text-align: center;
+      color: white;
+      margin-bottom: 30px;
+      padding: 20px;
+    }
+    
+    header h1 {
+      font-size: 2.5em;
+      margin-bottom: 10px;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+    }
+    
+    header p {
+      font-size: 1.1em;
+      opacity: 0.9;
+    }
+    
+    .status-card {
+      background: white;
+      border-radius: 15px;
+      padding: 20px;
+      margin-bottom: 20px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    }
+    
+    .status-info {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 15px;
+    }
+    
+    .status-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    
+    .status-icon {
+      font-size: 2em;
+    }
+    
+    .status-text {
+      font-size: 1.1em;
+      color: #333;
+    }
+    
+    .last-update {
+      color: #666;
+      font-size: 0.95em;
+    }
+    
+    .refresh-btn {
+      background: #667eea;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 1em;
+      transition: all 0.3s;
+    }
+    
+    .refresh-btn:hover {
+      background: #5568d3;
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+    }
+    
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 15px;
+      margin-bottom: 20px;
+    }
+    
+    .stat-card {
+      background: white;
+      border-radius: 12px;
+      padding: 20px;
+      text-align: center;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    }
+    
+    .stat-number {
+      font-size: 2.5em;
+      font-weight: bold;
+      margin-bottom: 5px;
+    }
+    
+    .stat-label {
+      color: #666;
+      font-size: 0.95em;
+    }
+    
+    .granted-count {
+      color: #10b981;
+    }
+    
+    .denied-count {
+      color: #ef4444;
+    }
+    
+    .total-count {
+      color: #667eea;
+    }
+    
+    .table-container {
+      background: white;
+      border-radius: 15px;
+      padding: 20px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+      overflow-x: auto;
+    }
+    
+    .table-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+      gap: 15px;
+    }
+    
+    .table-title {
+      font-size: 1.5em;
+      color: #333;
+      font-weight: 600;
+    }
+    
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+    }
+    
+    th {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 15px;
+      text-align: left;
+      font-weight: 600;
+      font-size: 0.95em;
+    }
+    
+    td {
+      padding: 14px 15px;
+      border-bottom: 1px solid #e5e7eb;
+      color: #374151;
+    }
+    
+    tbody tr:nth-child(even) {
+      background-color: #f9fafb;
+    }
+    
+    tbody tr:hover {
+      background-color: #f3f4f6;
+    }
+    
+    .access-granted {
+      color: #10b981;
+      font-weight: bold;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .access-granted::before {
+      content: "✓";
+      font-size: 1.2em;
+    }
+    
+    .access-denied {
+      color: #ef4444;
+      font-weight: bold;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .access-denied::before {
+      content: "✗";
+      font-size: 1.2em;
+    }
+    
+    .uid-code {
+      font-family: 'Courier New', monospace;
+      background: #f3f4f6;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 0.9em;
+      color: #1f2937;
+    }
+    
+    .loading {
+      text-align: center;
+      padding: 40px;
+      color: #666;
+    }
+    
+    .loading-spinner {
+      border: 4px solid #f3f3f3;
+      border-top: 4px solid #667eea;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 15px;
+    }
+    
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    
+    footer {
+      text-align: center;
+      color: white;
+      margin-top: 40px;
+      padding: 20px;
+      opacity: 0.8;
+    }
+    
+    @media (max-width: 768px) {
+      header h1 {
+        font-size: 1.8em;
+      }
+      
+      .stats-grid {
+        grid-template-columns: 1fr;
+      }
+      
+      table {
+        font-size: 0.85em;
+      }
+      
+      th, td {
+        padding: 10px 8px;
+      }
+    }
   </style>
 </head>
 <body>
-  <h1>🔐 RFID Door Access Log</h1>
-  <p>Live data from your RFID system</p>
-  
-  <table id="accessTable">
-    <thead>
-      <tr>
-        <th>Timestamp</th>
-        <th>Card UID</th>
-        <th>Access</th>
-      </tr>
-    </thead>
-    <tbody id="logEntries">
-      <tr><td colspan="3">Loading...</td></tr>
-    </tbody>
-  </table>
+  <div class="container">
+    <header>
+      <h1>🔐 RFID Door Access Log</h1>
+      <p>Live monitoring of your RFID access control system</p>
+    </header>
+    
+    <!-- Status Card -->
+    <div class="status-card">
+      <div class="status-info">
+        <div class="status-item">
+          <span class="status-icon">📡</span>
+          <div>
+            <div class="status-text"><strong>System Status:</strong> <span id="systemStatus">Loading...</span></div>
+            <div class="last-update" id="lastUpdate">Last update: --</div>
+          </div>
+        </div>
+        <button class="refresh-btn" onclick="loadAccessLog()">🔄 Refresh Data</button>
+      </div>
+    </div>
+    
+    <!-- Statistics Cards -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-number total-count" id="totalAccess">0</div>
+        <div class="stat-label">Total Scans</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-number granted-count" id="grantedAccess">0</div>
+        <div class="stat-label">Access Granted</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-number denied-count" id="deniedAccess">0</div>
+        <div class="stat-label">Access Denied</div>
+      </div>
+    </div>
+    
+    <!-- Access Log Table -->
+    <div class="table-container">
+      <div class="table-header">
+        <div class="table-title">📋 Access Log</div>
+      </div>
+      
+      <table id="accessTable">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Timestamp</th>
+            <th>Card UID</th>
+            <th>Access Status</th>
+          </tr>
+        </thead>
+        <tbody id="logEntries">
+          <tr>
+            <td colspan="4" class="loading">
+              <div class="loading-spinner"></div>
+              Loading access data...
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    
+    <footer>
+      <p>🔒 RFID Access Control System | Raspberry Pi Pico + Python</p>
+      <p>Data sourced from Google Sheets</p>
+    </footer>
+  </div>
   
   <script>
-    // Replace with YOUR Google Sheet ID
-    const SHEET_ID = '1ugqT_zOJ4qCh9GkKkp0bjLqNXRrLAO0leG9y6aaT_7A';
-    const SHEET_URL = `https://docs.google.com/spreadsheets/d/e/2PACX-1vR51VG47XOXULScQp2pZQ61gdOYY1HCLB4c3gkoMXr_ELqx148qzW0u8QEyRJchKfn3h66pPVuPXMD_/pubhtml`;
+    // ============================================
+    // CONFIGURATION - YOUR PUBLISHED GOOGLE SHEET
+    // ============================================
+    // Your Publish to Web URL (from File → Share → Publish to web)
+    const PUBLISHED_SHEET_ID = '2PACX-1vR51VG47XOXULScQp2pZQ61gdOYY1HCLB4c3gkoMXr_ELqx148qzW0u8QEyRJchKfn3h66pPVuPXMD_';
     
+    // Use CSV format for easier parsing
+    const SHEET_URL = `https://docs.google.com/spreadsheets/d/e/${PUBLISHED_SHEET_ID}/pub?gid=0&single=true&output=csv`;
+    
+    // Auto-refresh interval (30 seconds)
+    const AUTO_REFRESH_INTERVAL = 30000;
+    
+    // ============================================
+    // LOAD ACCESS LOG FROM GOOGLE SHEETS (CSV)
+    // ============================================
     function loadAccessLog() {
+      const tbody = document.getElementById('logEntries');
+      const systemStatus = document.getElementById('systemStatus');
+      
+      systemStatus.textContent = 'Connecting...';
+      
       fetch(SHEET_URL)
-        .then(response => response.text())
-        .then(data => {
-          // Parse Google Visualization API JSON
-          const jsonText = data.substring(47).slice(0, -2);
-          const json = JSON.parse(jsonText);
+        .then(response => {
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+          return response.text();
+        })
+        .then(csvText => {
+          // Parse CSV
+          const lines = csvText.trim().split('\n');
           
-          const tbody = document.getElementById('logEntries');
+          if (lines.length < 2) {
+            tbody.innerHTML = `
+              <tr>
+                <td colspan="4" class="loading">
+                  No data found yet. Scan an RFID card to see logs here.
+                </td>
+              </tr>
+            `;
+            systemStatus.textContent = 'Waiting for data';
+            updateStats(0, 0, 0);
+            return;
+          }
+          
+          // Clear old entries
           tbody.innerHTML = '';
           
-          // Skip header row, show last 50 entries
-          const rows = json.table.rows.slice(-50).reverse();
+          let totalScans = 0;
+          let grantedCount = 0;
+          let deniedCount = 0;
           
-          rows.forEach(row => {
-            const tr = document.createElement('tr');
-            const timestamp = row.c[0]?.v || 'N/A';
-            const uid = row.c[1]?.v || 'N/A';
-            const access = row.c[2]?.v || 'N/A';
+          // Skip header row (first line)
+          const dataLines = lines.slice(1);
+          const displayRows = dataLines.slice(-100).reverse();
+          
+          displayRows.forEach((line, index) => {
+            const rowNum = index + 1;
             
-            tr.innerHTML = `
-              <td>${timestamp}</td>
-              <td><code>${uid}</code></td>
-              <td class="${access === 'Granted' ? 'granted' : 'denied'}">${access}</td>
-            `;
-            tbody.appendChild(tr);
+            // Parse CSV line - split by comma and clean quotes
+            const parts = line.split(',').map(cell => cell.trim().replace(/^"|"$/g, ''));
+            
+            if (parts.length >= 3) {
+              const timestamp = parts[0] || 'N/A';
+              const uid = parts[1] || 'N/A';
+              const access = parts[2] || 'Unknown';
+              
+              // Count statistics
+              totalScans++;
+              if (access.toUpperCase() === 'GRANTED') {
+                grantedCount++;
+              } else if (access.toUpperCase() === 'DENIED') {
+                deniedCount++;
+              }
+              
+              const tr = document.createElement('tr');
+              tr.innerHTML = `
+                <td>${rowNum}</td>
+                <td>${formatTimestamp(timestamp)}</td>
+                <td><span class="uid-code">${uid}</span></td>
+                <td>
+                  <div class="${access.toUpperCase() === 'GRANTED' ? 'access-granted' : 'access-denied'}">
+                    ${access}
+                  </div>
+                </td>
+              `;
+              tbody.appendChild(tr);
+            }
           });
+          
+          // Update status
+          systemStatus.textContent = '✅ Online';
+          document.getElementById('lastUpdate').textContent = 
+            `Last update: ${new Date().toLocaleString()}`;
+          
+          // Update statistics
+          updateStats(totalScans, grantedCount, deniedCount);
         })
         .catch(error => {
-          document.getElementById('logEntries').innerHTML = 
-            '<tr><td colspan="3">Error loading data. Check Sheet ID.</td></tr>';
-          console.error('Error:', error);
-        });
-    }
-    
-    // Load data initially and refresh every 30 seconds
-    loadAccessLog();
-    setInterval(loadAccessLog, 30000);
-  </script>
-</body>
-</html>
+          console.error('Error loading data:', error);
+          
+          tbody.innerHTML = `
+            <tr>
+              <td colspan="4" class="loading">
+                ❌ Error loading data.<br>
+                Make sure you Published to web: File → Share → Publish to web
+              </td><
