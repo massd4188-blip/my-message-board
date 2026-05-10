@@ -1,53 +1,77 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RFID Card Scanner - Live Data</title>
-    <link rel="stylesheet" href="style.css">
+  <title>RFID Door Access Log</title>
+  <style>
+    body { font-family: Arial; max-width: 800px; margin: 50px auto; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
+    th { background-color: #4CAF50; color: white; }
+    tr:nth-child(even) { background-color: #f2f2f2; }
+    .granted { color: green; font-weight: bold; }
+    .denied { color: red; font-weight: bold; }
+  </style>
 </head>
 <body>
-    <div class="container">
-        <h1>📡 RFID Card Scanner</h1>
-        <p>Live data from your Raspberry Pi Pico RFID reader</p>
-        
-        <div class="stats">
-            <div class="stat-card">
-                <h3>Total Scans</h3>
-                <p id="totalScans">0</p>
-            </div>
-            <div class="stat-card">
-                <h3>Last Scan</h3>
-                <p id="lastScan">--</p>
-            </div>
-        </div>
-        
-        <div class="table-container">
-            <h2>Scan History</h2>
-            <table id="scanTable">
-                <thead>
-                    <tr><th>Timestamp</th><th>Card UID</th></tr>
-                </thead>
-                <tbody id="scanTableBody">
-                    <tr><td colspan="2">Loading data...</td></tr>
-                </tbody>
-            </table>
-        </div>
-        
-        <div class="admin-section">
-            <h2>Admin Panel</h2>
-            <div class="admin-links">
-                <a href="admin.html" class="admin-btn">Manage Authorized Cards</a>
-                <a href="client.html" class="client-btn">Client View</a>
-            </div>
-        </div>
-        
-        <footer>
-            <p>Powered by Raspberry Pi Pico + ESP-01S | Data stored on GitHub</p>
-            <p>Last updated: <span id="lastUpdated">--</span></p>
-        </footer>
-    </div>
+  <h1>🔐 RFID Door Access Log</h1>
+  <p>Live data from your RFID system</p>
+  
+  <table id="accessTable">
+    <thead>
+      <tr>
+        <th>Timestamp</th>
+        <th>Card UID</th>
+        <th>Access</th>
+      </tr>
+    </thead>
+    <tbody id="logEntries">
+      <tr><td colspan="3">Loading...</td></tr>
+    </tbody>
+  </table>
+  
+  <script>
+    // Replace with YOUR Google Sheet ID
+    const SHEET_ID = '1ugqT_zOJ4qCh9GkKkp0bjLqNXRrLAO0leG9y6aaT_7A';
+    const SHEET_URL = `https://docs.google.com/spreadsheets/d/1ugqT_zOJ4qCh9GkKkp0bjLqNXRrLAO0leG9y6aaT_7A/edit?usp=sharing`;
     
-    <script src="script.js"></script>
+    function loadAccessLog() {
+      fetch(SHEET_URL)
+        .then(response => response.text())
+        .then(data => {
+          // Parse Google Visualization API JSON
+          const jsonText = data.substring(47).slice(0, -2);
+          const json = JSON.parse(jsonText);
+          
+          const tbody = document.getElementById('logEntries');
+          tbody.innerHTML = '';
+          
+          // Skip header row, show last 50 entries
+          const rows = json.table.rows.slice(-50).reverse();
+          
+          rows.forEach(row => {
+            const tr = document.createElement('tr');
+            const timestamp = row.c[0]?.v || 'N/A';
+            const uid = row.c[1]?.v || 'N/A';
+            const access = row.c[2]?.v || 'N/A';
+            
+            tr.innerHTML = `
+              <td>${timestamp}</td>
+              <td><code>${uid}</code></td>
+              <td class="${access === 'Granted' ? 'granted' : 'denied'}">${access}</td>
+            `;
+            tbody.appendChild(tr);
+          });
+        })
+        .catch(error => {
+          document.getElementById('logEntries').innerHTML = 
+            '<tr><td colspan="3">Error loading data. Check Sheet ID.</td></tr>';
+          console.error('Error:', error);
+        });
+    }
+    
+    // Load data initially and refresh every 30 seconds
+    loadAccessLog();
+    setInterval(loadAccessLog, 30000);
+  </script>
 </body>
 </html>
