@@ -348,7 +348,7 @@
 const GITHUB_PAGES_URL = `https://${GITHUB_USERNAME}.github.io/${REPO_NAME}/data.txt?t=${Date.now()}`;
 
 // Auto-refresh interval (10 seconds for faster updates)
-const AUTO_REFRESH_INTERVAL = 10000;
+const AUTO_REFRESH_INTERVAL = 1000;
     
     // ============================================
     // LOAD ACCESS LOG FROM GITHUB
@@ -359,13 +359,20 @@ const AUTO_REFRESH_INTERVAL = 10000;
       
       systemStatus.textContent = 'Connecting...';
       
-     fetch(GITHUB_PAGES_URL)
-  .then(response => {
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-    return response.text();
-  })
+     fetch(GITHUB_PAGES_URL, {
+  cache: 'no-cache',
+  headers: {
+    'Cache-Control': 'no-cache, no-store, must-revalidate',
+    'Pragma': 'no-cache',
+    'Expires': '0'
+  }
+})
+.then(response => {
+  if (!response.ok) {
+    throw new Error(`HTTP error! status: ${response.status}`);
+  }
+  return response.text();
+})
         .then(textData => {
           // Parse data.txt format
           const lines = textData.trim().split('\n');
