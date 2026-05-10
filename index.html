@@ -345,7 +345,7 @@
     const FILE_PATH = 'data.txt';                      // File name
     
     // Raw GitHub URL (no token needed for public repos)
-    const RAW_GITHUB_URL = `https://raw.githubusercontent.com/${GITHUB_USERNAME}/${REPO_NAME}/main/${FILE_PATH}`;
+    const RAW_GITHUB_URL = `https://raw.githubusercontent.com/${GITHUB_USERNAME}/${REPO_NAME}/main/${FILE_PATH}?t=${Date.now()}`;
     
     // Auto-refresh interval (30 seconds)
     const AUTO_REFRESH_INTERVAL = 30000;
