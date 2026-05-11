@@ -3,11 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>MCR Login</title>
- 
+  <title>MCR - RFID History</title>
+  <!-- plain, amateur style - no fancy designs -->
 </head>
 <body>
- 
+
+  <!-- LOGIN SECTION -->
   <div id="loginContainer" style="max-width: 400px; margin: 80px auto; padding: 20px; border: 1px solid #ccc; background: #f9f9f9;">
     <h2>Login</h2>
     <hr>
@@ -22,42 +23,50 @@
     <button onclick="attemptLogin()" style="padding: 8px 20px; font-size: 1rem; cursor: pointer;">Login</button>
     <div id="loginErrorMsg" style="margin-top: 12px; color: #a00; font-size: 0.9em;"></div>
     <hr style="margin-top: 20px;">
-    
   </div>
 
- 
+  <!-- MAIN CONTENT (hidden until login) -->
   <div id="mainContent" style="display: none; max-width: 1100px; margin: 15px auto; padding: 0 10px;">
-    <!-- simple header -->
     <hr>
     <h1>MCR</h1>
     <hr>
     
+    <!-- status bar -->
     <div>
       <strong>System status:</strong> <span id="systemStatus">loading...</span>
       <span style="margin-left: 20px;">|</span>
       <strong>Last update:</strong> <span id="lastUpdate">--</span>
       <span style="margin-left: 20px;">|</span>
-      <button onclick="loadAccessLog()" style="padding: 4px 12px; font-size: 0.9rem;">refresh</button>
+      <button onclick="refreshAllData()" style="padding: 4px 12px; font-size: 0.9rem;">refresh</button>
       <span style="margin-left: 20px;">|</span>
       <button onclick="logout()" style="padding: 4px 12px; font-size: 0.9rem;">logout</button>
     </div>
     
     <br>
     
-    <!-- statistics: simple inline numbers -->
+    <!-- SIMPLE CARD SELECTOR BOX -->
+    <div style="border: 1px solid #aaa; padding: 12px; background: #fefefe; margin-bottom: 20px;">
+      <strong>📇 Select Card UID:</strong><br>
+      <select id="cardSelector" style="padding: 6px; margin-top: 8px; min-width: 200px; font-family: monospace;" onchange="filterHistoryByCard()">
+        <option value="">-- Choose a card UID --</option>
+      </select>
+      <span style="margin-left: 15px; font-size: 0.9em;" id="selectedCardInfo"></span>
+    </div>
+    
+    <!-- Statistics for SELECTED card only -->
     <div>
-      <strong>Statistics:</strong>
-      <span>Total scans: <span id="totalAccess">0</span></span>&nbsp;&nbsp;|&nbsp;&nbsp;
-      <span>Granted: <span id="grantedAccess">0</span></span>&nbsp;&nbsp;|&nbsp;&nbsp;
-      <span>Denied: <span id="deniedAccess">0</span></span>
+      <strong>Statistics for selected card:</strong>
+      <span>Total scans: <span id="cardTotalAccess">0</span></span>&nbsp;&nbsp;|&nbsp;&nbsp;
+      <span>Granted: <span id="cardGrantedAccess">0</span></span>&nbsp;&nbsp;|&nbsp;&nbsp;
+      <span>Denied: <span id="cardDeniedAccess">0</span></span>
     </div>
     
     <br>
     <hr>
     
-    <!-- access log table - very basic -->
+    <!-- History table (shows only selected card) -->
     <div>
-      <h3>Access Log Entries</h3>
+      <h3>Access History for selected card</h3>
       <table border="1" cellpadding="6" cellspacing="0" style="border-collapse: collapse; width: 100%; background: white;">
         <thead>
           <tr>
@@ -67,9 +76,9 @@
             <th>Access Status</th>
           </tr>
         </thead>
-        <tbody id="logEntries">
+        <tbody id="historyEntries">
           <tr>
-            <td colspan="4" align="center">loading data from github...</td>
+            <td colspan="4" align="center">login to select a card...</td>
           </tr>
         </tbody>
       </table>
@@ -79,100 +88,90 @@
     <hr>
     <footer>
       <small>RFID system | data from github repo (plain text)</small><br>
-      <small>raspberry pi pico + python logger</small>
+      <small>raspberry pi pico + python logger | card history filter</small>
     </footer>
   </div>
   
   <script>
-    // ==================================================
+    // =============================================
     // ADMIN CREDENTIALS
-    // ==================================================
+    // =============================================
     const ADMIN_USER = 'admin';
     const ADMIN_PASS = 'admin';
     
-    // ==================================================
+    // =============================================
     // GITHUB CONFIGURATION
-    // ==================================================
-    const GITHUB_USERNAME = 'massd4188-blip';      // your github username
-    const REPO_NAME = 'my-message-board';          // repo name
-    const FILE_PATH = 'data.txt';                  // data file
+    // =============================================
+    const GITHUB_USERNAME = 'massd4188-blip';
+    const REPO_NAME = 'my-message-board';
+    const FILE_PATH = 'data.txt';
     
-    // auto refresh interval (5 seconds)
     const AUTO_REFRESH_MS = 5000;
     
     let refreshInterval = null;
     let isLoggedIn = false;
     
-    // ==================================================
+    // store full access log (all records)
+    let allAccessRecords = [];   // each record: { timestamp, uid, status }
+    
+    // current selected UID
+    let currentSelectedUid = "";
+    
+    // =============================================
     // LOGIN FUNCTIONS
-    // ==================================================
+    // =============================================
     function attemptLogin() {
       const username = document.getElementById('loginUsername').value;
       const password = document.getElementById('loginPassword').value;
       const errorDiv = document.getElementById('loginErrorMsg');
       
       if (username === ADMIN_USER && password === ADMIN_PASS) {
-        // login success
         errorDiv.style.color = '#0a0';
         errorDiv.innerHTML = '✓ login successful, loading dashboard...';
         isLoggedIn = true;
         
-        // hide login container, show main content
         document.getElementById('loginContainer').style.display = 'none';
         document.getElementById('mainContent').style.display = 'block';
         
-        // load data for first time
-        loadAccessLog();
+        // load data from github
+        loadAccessLogFromGithub();
         startAutoRefresh();
       } else {
-        // wrong credentials
         errorDiv.style.color = '#a00';
         errorDiv.innerHTML = '❌ invalid username or password. access denied.';
-        // clear password field for security
         document.getElementById('loginPassword').value = '';
       }
     }
     
     function logout() {
-      // stop auto refresh
       if (refreshInterval) {
         clearInterval(refreshInterval);
         refreshInterval = null;
       }
-      
       isLoggedIn = false;
-      
-      // hide main content, show login screen
       document.getElementById('mainContent').style.display = 'none';
       document.getElementById('loginContainer').style.display = 'block';
-      
-      // clear login fields
       document.getElementById('loginUsername').value = '';
       document.getElementById('loginPassword').value = '';
       document.getElementById('loginErrorMsg').innerHTML = '';
       
-      // optional: reset stats display to zeros
-      document.getElementById('totalAccess').textContent = '0';
-      document.getElementById('grantedAccess').textContent = '0';
-      document.getElementById('deniedAccess').textContent = '0';
-      document.getElementById('systemStatus').textContent = 'loading...';
-      document.getElementById('lastUpdate').textContent = '--';
+      // reset UI
+      allAccessRecords = [];
+      currentSelectedUid = "";
+      updateCardSelector([]);
+      clearHistoryDisplay();
     }
     
-    // ==================================================
-    // GITHUB DATA LOADING FUNCTIONS
-    // ==================================================
+    // =============================================
+    // GITHUB FETCH
+    // =============================================
     function getDataUrl() {
       return `https://${GITHUB_USERNAME}.github.io/${REPO_NAME}/${FILE_PATH}?t=${Date.now()}`;
     }
     
-    function loadAccessLog() {
-      // only load if user is logged in
-      if (!isLoggedIn) {
-        return;
-      }
+    function loadAccessLogFromGithub() {
+      if (!isLoggedIn) return;
       
-      const tbody = document.getElementById('logEntries');
       const statusSpan = document.getElementById('systemStatus');
       const lastUpdateSpan = document.getElementById('lastUpdate');
       
@@ -188,166 +187,403 @@
         }
       })
       .then(response => {
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}`);
-        }
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
         return response.text();
       })
       .then(rawText => {
-        // process data.txt content
         const allLines = rawText.split(/\r?\n/);
-        
-        // filter out empty lines and comment lines (starting with #)
         const dataLines = allLines.filter(line => {
           let trimmed = line.trim();
           return trimmed !== '' && !trimmed.startsWith('#');
         });
         
-        if (dataLines.length === 0) {
-          tbody.innerHTML = `<tr><td colspan="4" align="center">no access records yet. scan an RFID card.</td></tr>`;
-          statusSpan.textContent = 'online (no data)';
-          updateStats(0, 0, 0);
-          lastUpdateSpan.textContent = new Date().toLocaleString();
-          return;
-        }
-        
-        // clear old table rows
-        tbody.innerHTML = '';
-        
-        let totalScans = 0;
-        let grantedTotal = 0;
-        let deniedTotal = 0;
-        
-        // show last 100 entries (newest first)
-        const reversedEntries = dataLines.slice(-100).reverse();
-        
-        for (let i = 0; i < reversedEntries.length; i++) {
-          const line = reversedEntries[i];
+        // parse records
+        const records = [];
+        for (let line of dataLines) {
           const parts = line.split('|').map(p => p.trim());
-          
           if (parts.length >= 3) {
-            const timestamp = parts[0];
-            const uid = parts[1];
-            const accessStatusRaw = parts[2];
-            
-            // count stats
-            totalScans++;
-            if (accessStatusRaw.toUpperCase() === 'GRANTED') {
-              grantedTotal++;
-            } else if (accessStatusRaw.toUpperCase() === 'DENIED') {
-              deniedTotal++;
-            }
-            // unknown status is just ignored in counts but displayed as is
-            
-            // create row
-            const row = tbody.insertRow();
-            const rowNum = i + 1;
-            
-            const cellNum = row.insertCell(0);
-            cellNum.textContent = rowNum;
-            
-            const cellTime = row.insertCell(1);
-            cellTime.textContent = timestamp;
-            
-            const cellUid = row.insertCell(2);
-            const uidSpan = document.createElement('span');
-            uidSpan.textContent = uid;
-            uidSpan.style.fontFamily = 'monospace';
-            uidSpan.style.backgroundColor = '#f0f0f0';
-            uidSpan.style.padding = '2px 6px';
-            cellUid.appendChild(uidSpan);
-            
-            const cellStatus = row.insertCell(3);
-            if (accessStatusRaw.toUpperCase() === 'GRANTED') {
-              cellStatus.textContent = 'GRANTED';
-              cellStatus.style.color = '#155724';
-              cellStatus.style.fontWeight = 'bold';
-            } else if (accessStatusRaw.toUpperCase() === 'DENIED') {
-              cellStatus.textContent = 'DENIED';
-              cellStatus.style.color = '#721c24';
-              cellStatus.style.fontWeight = 'bold';
-            } else {
-              cellStatus.textContent = accessStatusRaw;
-            }
-          } else {
-            console.warn('skipping malformed line:', line);
+            records.push({
+              timestamp: parts[0],
+              uid: parts[1],
+              status: parts[2].toUpperCase()
+            });
           }
         }
         
-        updateStats(totalScans, grantedTotal, deniedTotal);
+        // store all records globally
+        allAccessRecords = records;
+        
+        // build unique card UIDs list
+        const uniqueUids = [...new Set(records.map(r => r.uid))];
+        updateCardSelector(uniqueUids);
+        
+        // if there is a currently selected UID, refresh its stats/history
+        if (currentSelectedUid && uniqueUids.includes(currentSelectedUid)) {
+          filterHistoryByCard();
+        } else if (uniqueUids.length > 0 && currentSelectedUid === "") {
+          // auto-select first card if none selected
+          currentSelectedUid = uniqueUids[0];
+          const selector = document.getElementById('cardSelector');
+          if (selector) selector.value = currentSelectedUid;
+          filterHistoryByCard();
+        } else if (uniqueUids.length === 0) {
+          // no cards at all
+          clearHistoryDisplay();
+          document.getElementById('cardTotalAccess').textContent = '0';
+          document.getElementById('cardGrantedAccess').textContent = '0';
+          document.getElementById('cardDeniedAccess').textContent = '0';
+          document.getElementById('historyEntries').innerHTML = `<tr><td colspan="4" align="center">no access records found.</td></tr>`;
+        }
+        
         statusSpan.textContent = 'online';
         lastUpdateSpan.textContent = new Date().toLocaleString();
       })
       .catch(error => {
         console.error('error loading data:', error);
-        tbody.innerHTML = `
-          <tr>
-            <td colspan="4" align="center" style="color: #a00;">
-              error loading data from github.<br>
-              double-check:<br>
-              - repo is public: ${GITHUB_USERNAME}/${REPO_NAME}<br>
-              - file path: ${FILE_PATH}<br>
-              - username spelling
-            </td>
-          </tr>
-        `;
         statusSpan.textContent = 'offline (fetch error)';
-        updateStats(0, 0, 0);
         lastUpdateSpan.textContent = new Date().toLocaleString() + ' (error)';
+        document.getElementById('historyEntries').innerHTML = `<tr><td colspan="4" align="center" style="color:#a00;">error loading data from github.<br>check repo: ${GITHUB_USERNAME}/${REPO_NAME}</td></tr>`;
+        allAccessRecords = [];
+        updateCardSelector([]);
       });
     }
     
-    function updateStats(total, granted, denied) {
-      // only update if main content elements exist (they do, but check anyway)
-      if (document.getElementById('totalAccess')) {
-        document.getElementById('totalAccess').textContent = total;
-        document.getElementById('grantedAccess').textContent = granted;
-        document.getElementById('deniedAccess').textContent = denied;
+    // =============================================
+    // CARD SELECTOR UI
+    // =============================================
+    function updateCardSelector(uidsList) {
+      const selector = document.getElementById('cardSelector');
+      if (!selector) return;
+      
+      // clear existing options except first placeholder
+      selector.innerHTML = '<option value="">-- Choose a card UID --</option>';
+      
+      if (uidsList.length === 0) {
+        selector.innerHTML = '<option value="">-- no cards found --</option>';
+        return;
+      }
+      
+      for (let uid of uidsList) {
+        const option = document.createElement('option');
+        option.value = uid;
+        option.textContent = uid;
+        selector.appendChild(option);
+      }
+      
+      // if we had a previous selection that still exists, restore
+      if (currentSelectedUid && uidsList.includes(currentSelectedUid)) {
+        selector.value = currentSelectedUid;
+      } else if (uidsList.length > 0 && !currentSelectedUid) {
+        // optionally auto select first
+        selector.value = uidsList[0];
+        currentSelectedUid = uidsList[0];
+        filterHistoryByCard();
       }
     }
     
+    // called when dropdown changes
+    function filterHistoryByCard() {
+      if (!isLoggedIn) return;
+      
+      const selector = document.getElementById('cardSelector');
+      const selectedUid = selector.value;
+      
+      if (!selectedUid) {
+        // no card selected: clear stats and show message
+        currentSelectedUid = "";
+        clearHistoryDisplay();
+        document.getElementById('cardTotalAccess').textContent = '0';
+        document.getElementById('cardGrantedAccess').textContent = '0';
+        document.getElementById('cardDeniedAccess').textContent = '0';
+        document.getElementById('selectedCardInfo').innerHTML = '';
+        return;
+      }
+      
+      currentSelectedUid = selectedUid;
+      document.getElementById('selectedCardInfo').innerHTML = `🔍 showing history for: <strong>${selectedUid}</strong>`;
+      
+      // filter records for this UID
+      const filteredRecords = allAccessRecords.filter(rec => rec.uid === selectedUid);
+      
+      // compute statistics
+      let total = filteredRecords.length;
+      let granted = filteredRecords.filter(r => r.status === 'GRANTED').length;
+      let denied = filteredRecords.filter(r => r.status === 'DENIED').length;
+      
+      document.getElementById('cardTotalAccess').textContent = total;
+      document.getElementById('cardGrantedAccess').textContent = granted;
+      document.getElementById('cardDeniedAccess').textContent = denied;
+      
+      // display history table (newest first)
+      const tbody = document.getElementById('historyEntries');
+      tbody.innerHTML = '';
+      
+      if (filteredRecords.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="4" align="center">no access history for this card.</td></tr>`;
+        return;
+      }
+      
+      // show newest first (reverse chronological)
+      const reversedHistory = [...filteredRecords].reverse();
+      
+      for (let i = 0; i < reversedHistory.length; i++) {
+        const rec = reversedHistory[i];
+        const rowNum = i + 1;
+        const row = tbody.insertRow();
+        
+        const cellNum = row.insertCell(0);
+        cellNum.textContent = rowNum;
+        
+        const cellTime = row.insertCell(1);
+        cellTime.textContent = rec.timestamp;
+        
+        const cellUid = row.insertCell(2);
+        const uidSpan = document.createElement('span');
+        uidSpan.textContent = rec.uid;
+        uidSpan.style.fontFamily = 'monospace';
+        uidSpan.style.backgroundColor = '#f0f0f0';
+        uidSpan.style.padding = '2px 6px';
+        cellUid.appendChild(uidSpan);
+        
+        const cellStatus = row.insertCell(3);
+        if (rec.status === 'GRANTED') {
+          cellStatus.textContent = 'GRANTED';
+          cellStatus.style.color = '#155724';
+          cellStatus.style.fontWeight = 'bold';
+        } else if (rec.status === 'DENIED') {
+          cellStatus.textContent = 'DENIED';
+          cellStatus.style.color = '#721c24';
+          cellStatus.style.fontWeight = 'bold';
+        } else {
+          cellStatus.textContent = rec.status;
+        }
+      }
+    }
+    
+    function clearHistoryDisplay() {
+      const tbody = document.getElementById('historyEntries');
+      if (tbody) {
+        tbody.innerHTML = `<tr><td colspan="4" align="center">select a card UID to view history</td></tr>`;
+      }
+      document.getElementById('selectedCardInfo').innerHTML = '';
+      // reset statistics for card section
+      document.getElementById('cardTotalAccess').textContent = '0';
+      document.getElementById('cardGrantedAccess').textContent = '0';
+      document.getElementById('cardDeniedAccess').textContent = '0';
+    }
+    
+    // refresh full data (reload from github)
+    function refreshAllData() {
+      if (!isLoggedIn) return;
+      loadAccessLogFromGithub();
+    }
+    
+    // =============================================
+    // AUTO REFRESH & INIT
+    // =============================================
     function startAutoRefresh() {
       if (refreshInterval) {
         clearInterval(refreshInterval);
       }
       refreshInterval = setInterval(() => {
-        // only refresh if still logged in
         if (isLoggedIn) {
-          loadAccessLog();
+          loadAccessLogFromGithub();
         }
       }, AUTO_REFRESH_MS);
     }
     
-    // ==================================================
-    // HANDLE PAGE LOAD - ensure login screen visible
-    // ==================================================
-    document.addEventListener('DOMContentLoaded', () => {
-      // make sure main content is hidden, login container visible
+    // helper to update timestamps and keep selection (used by manual refresh)
+    // but loadAccessLogFromGithub already calls filterHistoryByCard internally via updateCardSelector / auto selection.
+    // We'll adjust so after reload, if a card was selected, we preserve selection.
+    // Override loadAccessLogFromGithub to reapply selected uid after load.
+    const originalLoad = loadAccessLogFromGithub;
+    window.loadAccessLogFromGithub = function() {
+      if (!isLoggedIn) return;
+      const previouslySelected = currentSelectedUid;
+      originalLoad();
+      // after async fetch, we need to restore selection because the updateCardSelector calls filterHistoryByCard
+      // but we attach a small delay? Actually updateCardSelector inside original's .then will call filter if auto-select.
+      // To be safe, override the then behavior: Not needed because after data loads, updateCardSelector will rebuild options,
+      // and if previouslySelected exists, we set selector value and call filterHistoryByCard. That logic is inside updateCardSelector.
+      // However updateCardSelector currently only matches if currentSelectedUid is set. Let's enhance updateCardSelector to respect previous selection.
+      // I'll modify the updateCardSelector function to restore based on a global variable. Already inside updateCardSelector it uses currentSelectedUid and selector.value.
+      // The current updateCardSelector checks: if currentSelectedUid && uidsList.includes(currentSelectedUid) then set option.
+      // So before calling updateCardSelector, we must keep currentSelectedUid unchanged. It works.
+    };
+    
+    // rebind to avoid recursion issues: but simpler: keep the original and replace reference
+    // replace the global function with wrapper
+    window.loadAccessLogFromGithub = function() {
+      if (!isLoggedIn) return;
+      const statusSpan = document.getElementById('systemStatus');
+      const lastUpdateSpan = document.getElementById('lastUpdate');
+      statusSpan.textContent = 'fetching...';
+      const url = getDataUrl();
+      fetch(url, {
+        cache: 'no-cache',
+        headers: { 'Cache-Control': 'no-cache, no-store, must-revalidate', 'Pragma': 'no-cache' }
+      })
+      .then(response => {
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        return response.text();
+      })
+      .then(rawText => {
+        const allLines = rawText.split(/\r?\n/);
+        const dataLines = allLines.filter(line => {
+          let trimmed = line.trim();
+          return trimmed !== '' && !trimmed.startsWith('#');
+        });
+        const records = [];
+        for (let line of dataLines) {
+          const parts = line.split('|').map(p => p.trim());
+          if (parts.length >= 3) {
+            records.push({
+              timestamp: parts[0],
+              uid: parts[1],
+              status: parts[2].toUpperCase()
+            });
+          }
+        }
+        allAccessRecords = records;
+        const uniqueUids = [...new Set(records.map(r => r.uid))];
+        // update dropdown preserving current selection if still valid
+        const selector = document.getElementById('cardSelector');
+        if (selector) {
+          const previousSelection = currentSelectedUid;
+          selector.innerHTML = '<option value="">-- Choose a card UID --</option>';
+          if (uniqueUids.length === 0) {
+            selector.innerHTML = '<option value="">-- no cards found --</option>';
+          } else {
+            for (let uid of uniqueUids) {
+              const option = document.createElement('option');
+              option.value = uid;
+              option.textContent = uid;
+              selector.appendChild(option);
+            }
+          }
+          // restore previous selection
+          if (previousSelection && uniqueUids.includes(previousSelection)) {
+            selector.value = previousSelection;
+            currentSelectedUid = previousSelection;
+            filterHistoryByCard();
+          } else if (uniqueUids.length > 0 && !previousSelection) {
+            // select first card automatically for better UX
+            selector.value = uniqueUids[0];
+            currentSelectedUid = uniqueUids[0];
+            filterHistoryByCard();
+          } else if (uniqueUids.length === 0) {
+            currentSelectedUid = "";
+            clearHistoryDisplay();
+            document.getElementById('cardTotalAccess').textContent = '0';
+            document.getElementById('cardGrantedAccess').textContent = '0';
+            document.getElementById('cardDeniedAccess').textContent = '0';
+            document.getElementById('selectedCardInfo').innerHTML = '';
+          } else if (previousSelection && !uniqueUids.includes(previousSelection)) {
+            // previously selected card no longer exists in dataset
+            currentSelectedUid = "";
+            clearHistoryDisplay();
+            document.getElementById('cardTotalAccess').textContent = '0';
+            document.getElementById('cardGrantedAccess').textContent = '0';
+            document.getElementById('cardDeniedAccess').textContent = '0';
+            document.getElementById('selectedCardInfo').innerHTML = '<span style="color:#a00;">previous card not found in log</span>';
+          }
+        } else {
+          // fallback
+          if (uniqueUids.length > 0 && !currentSelectedUid) {
+            currentSelectedUid = uniqueUids[0];
+            filterHistoryByCard();
+          } else if (currentSelectedUid && uniqueUids.includes(currentSelectedUid)) {
+            filterHistoryByCard();
+          }
+        }
+        statusSpan.textContent = 'online';
+        lastUpdateSpan.textContent = new Date().toLocaleString();
+      })
+      .catch(error => {
+        console.error(error);
+        statusSpan.textContent = 'offline (fetch error)';
+        lastUpdateSpan.textContent = new Date().toLocaleString() + ' (error)';
+        document.getElementById('historyEntries').innerHTML = `<tr><td colspan="4" align="center" style="color:#a00;">error loading data.<br>check repo & username</td></tr>`;
+        allAccessRecords = [];
+        const selector = document.getElementById('cardSelector');
+        if (selector) selector.innerHTML = '<option value="">-- error --</option>';
+      });
+    };
+    
+    // keep compatibility with existing refresh button
+    function refreshAllData() {
+      if (isLoggedIn) window.loadAccessLogFromGithub();
+    }
+    
+    // override filterHistoryByCard to also handle empty selection
+    window.filterHistoryByCard = filterHistoryByCard;
+    window.refreshAllData = refreshAllData;
+    
+    // fix logout to reset everything
+    const originalLogout = logout;
+    window.logout = function() {
+      if (refreshInterval) clearInterval(refreshInterval);
+      refreshInterval = null;
+      isLoggedIn = false;
+      allAccessRecords = [];
+      currentSelectedUid = "";
       document.getElementById('mainContent').style.display = 'none';
       document.getElementById('loginContainer').style.display = 'block';
-      
-      // clear any previous interval
-      if (refreshInterval) {
-        clearInterval(refreshInterval);
-        refreshInterval = null;
-      }
-      
-      // set focus on username field
+      document.getElementById('loginUsername').value = '';
+      document.getElementById('loginPassword').value = '';
+      document.getElementById('loginErrorMsg').innerHTML = '';
+      // clear stats and table
+      const histBody = document.getElementById('historyEntries');
+      if (histBody) histBody.innerHTML = `<tr><td colspan="4" align="center">login to view history</td></tr>`;
+      document.getElementById('cardTotalAccess').textContent = '0';
+      document.getElementById('cardGrantedAccess').textContent = '0';
+      document.getElementById('cardDeniedAccess').textContent = '0';
+      const sel = document.getElementById('cardSelector');
+      if (sel) sel.innerHTML = '<option value="">-- Choose a card UID --</option>';
+      document.getElementById('selectedCardInfo').innerHTML = '';
+      document.getElementById('systemStatus').textContent = 'loading...';
+      document.getElementById('lastUpdate').textContent = '--';
+    };
+    
+    // start auto refresh with proper handler
+    function startAutoRefreshWrapper() {
+      if (refreshInterval) clearInterval(refreshInterval);
+      refreshInterval = setInterval(() => {
+        if (isLoggedIn) {
+          window.loadAccessLogFromGithub();
+        }
+      }, AUTO_REFRESH_MS);
+    }
+    
+    // override startAutoRefresh
+    window.startAutoRefresh = startAutoRefreshWrapper;
+    
+    document.addEventListener('DOMContentLoaded', () => {
+      document.getElementById('mainContent').style.display = 'none';
+      document.getElementById('loginContainer').style.display = 'block';
+      if (refreshInterval) clearInterval(refreshInterval);
+      refreshInterval = null;
       document.getElementById('loginUsername').focus();
       
-      // allow Enter key to submit login
       const passField = document.getElementById('loginPassword');
       const userField = document.getElementById('loginUsername');
-      
-      function handleEnter(e) {
-        if (e.key === 'Enter') {
-          attemptLogin();
-        }
-      }
-      
+      function handleEnter(e) { if (e.key === 'Enter') attemptLogin(); }
       passField.addEventListener('keypress', handleEnter);
       userField.addEventListener('keypress', handleEnter);
+      
+      // initial empty state
+      allAccessRecords = [];
+      currentSelectedUid = "";
+      const histBody = document.getElementById('historyEntries');
+      if (histBody) histBody.innerHTML = `<tr><td colspan="4" align="center">login to access logs</td></tr>`;
     });
+    
+    // expose functions globally
+    window.attemptLogin = attemptLogin;
+    window.logout = window.logout;
+    window.refreshAllData = refreshAllData;
+    window.filterHistoryByCard = filterHistoryByCard;
+    window.loadAccessLogFromGithub = window.loadAccessLogFromGithub;
   </script>
 </body>
 </html>
