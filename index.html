@@ -3,18 +3,43 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>MCR</title>
-  <!-- no styles, no gradients, no shadows, just plain simple -->
+  <title>MCR - Admin Access</title>
+  <!-- no styles, no gradients, no shadows, just plain simple amateur style -->
 </head>
 <body>
- 
-  <div style="max-width: 1100px; margin: 15px auto; padding: 0 10px;">
-    <!-- simple header - no shadows, no gradient text, no icons fancy -->
+  <!-- 
+    ==================================================
+    ADMIN LOGIN SECTION - protects the main content
+    login: admin / password: admin
+    ==================================================
+  -->
+  <div id="loginContainer" style="max-width: 400px; margin: 80px auto; padding: 20px; border: 1px solid #ccc; background: #f9f9f9;">
+    <h2>🔐 Admin Login Required</h2>
+    <hr>
+    <div style="margin-bottom: 15px;">
+      <label><strong>Username:</strong></label><br>
+      <input type="text" id="loginUsername" style="width: 100%; padding: 6px; margin-top: 5px; box-sizing: border-box;" placeholder="enter username">
+    </div>
+    <div style="margin-bottom: 15px;">
+      <label><strong>Password:</strong></label><br>
+      <input type="password" id="loginPassword" style="width: 100%; padding: 6px; margin-top: 5px; box-sizing: border-box;" placeholder="enter password">
+    </div>
+    <button onclick="attemptLogin()" style="padding: 8px 20px; font-size: 1rem; cursor: pointer;">Login</button>
+    <div id="loginErrorMsg" style="margin-top: 12px; color: #a00; font-size: 0.9em;"></div>
+    <hr style="margin-top: 20px;">
+    <small>authorized personnel only</small>
+  </div>
+
+  <!-- 
+    ==================================================
+    MAIN CONTENT (hidden until login success)
+    ==================================================
+  -->
+  <div id="mainContent" style="display: none; max-width: 1100px; margin: 15px auto; padding: 0 10px;">
+    <!-- simple header -->
     <hr>
     <h1>MCR</h1>
-    
     <hr>
-    
     
     <div>
       <strong>System status:</strong> <span id="systemStatus">loading...</span>
@@ -22,11 +47,13 @@
       <strong>Last update:</strong> <span id="lastUpdate">--</span>
       <span style="margin-left: 20px;">|</span>
       <button onclick="loadAccessLog()" style="padding: 4px 12px; font-size: 0.9rem;">refresh</button>
+      <span style="margin-left: 20px;">|</span>
+      <button onclick="logout()" style="padding: 4px 12px; font-size: 0.9rem;">logout</button>
     </div>
     
     <br>
     
-    <!-- statistics: simple table or inline numbers no cards -->
+    <!-- statistics: simple inline numbers -->
     <div>
       <strong>Statistics:</strong>
       <span>Total scans: <span id="totalAccess">0</span></span>&nbsp;&nbsp;|&nbsp;&nbsp;
@@ -37,7 +64,7 @@
     <br>
     <hr>
     
-    <!-- access log table - very basic, no fancy headers or gradients -->
+    <!-- access log table - very basic -->
     <div>
       <h3>Access Log Entries</h3>
       <table border="1" cellpadding="6" cellspacing="0" style="border-collapse: collapse; width: 100%; background: white;">
@@ -67,29 +94,97 @@
   
   <script>
     // ==================================================
-    // BASIC CONFIGURATION - same github details as before
+    // ADMIN CREDENTIALS
     // ==================================================
-    const GITHUB_USERNAME = 'massd4188-blip';      // example username
+    const ADMIN_USER = 'admin';
+    const ADMIN_PASS = 'admin';
+    
+    // ==================================================
+    // GITHUB CONFIGURATION
+    // ==================================================
+    const GITHUB_USERNAME = 'massd4188-blip';      // your github username
     const REPO_NAME = 'my-message-board';          // repo name
     const FILE_PATH = 'data.txt';                  // data file
     
-    // build raw github pages url with cache buster (simple timestamp)
+    // auto refresh interval (5 seconds)
+    const AUTO_REFRESH_MS = 5000;
+    
+    let refreshInterval = null;
+    let isLoggedIn = false;
+    
+    // ==================================================
+    // LOGIN FUNCTIONS
+    // ==================================================
+    function attemptLogin() {
+      const username = document.getElementById('loginUsername').value;
+      const password = document.getElementById('loginPassword').value;
+      const errorDiv = document.getElementById('loginErrorMsg');
+      
+      if (username === ADMIN_USER && password === ADMIN_PASS) {
+        // login success
+        errorDiv.style.color = '#0a0';
+        errorDiv.innerHTML = '✓ login successful, loading dashboard...';
+        isLoggedIn = true;
+        
+        // hide login container, show main content
+        document.getElementById('loginContainer').style.display = 'none';
+        document.getElementById('mainContent').style.display = 'block';
+        
+        // load data for first time
+        loadAccessLog();
+        startAutoRefresh();
+      } else {
+        // wrong credentials
+        errorDiv.style.color = '#a00';
+        errorDiv.innerHTML = '❌ invalid username or password. access denied.';
+        // clear password field for security
+        document.getElementById('loginPassword').value = '';
+      }
+    }
+    
+    function logout() {
+      // stop auto refresh
+      if (refreshInterval) {
+        clearInterval(refreshInterval);
+        refreshInterval = null;
+      }
+      
+      isLoggedIn = false;
+      
+      // hide main content, show login screen
+      document.getElementById('mainContent').style.display = 'none';
+      document.getElementById('loginContainer').style.display = 'block';
+      
+      // clear login fields
+      document.getElementById('loginUsername').value = '';
+      document.getElementById('loginPassword').value = '';
+      document.getElementById('loginErrorMsg').innerHTML = '';
+      
+      // optional: reset stats display to zeros
+      document.getElementById('totalAccess').textContent = '0';
+      document.getElementById('grantedAccess').textContent = '0';
+      document.getElementById('deniedAccess').textContent = '0';
+      document.getElementById('systemStatus').textContent = 'loading...';
+      document.getElementById('lastUpdate').textContent = '--';
+    }
+    
+    // ==================================================
+    // GITHUB DATA LOADING FUNCTIONS
+    // ==================================================
     function getDataUrl() {
       return `https://${GITHUB_USERNAME}.github.io/${REPO_NAME}/${FILE_PATH}?t=${Date.now()}`;
     }
     
-    // auto refresh interval 5 seconds typical for amateur project (quick updates)
-    const AUTO_REFRESH_MS = 5000;   // 5 seconds
-    
-    // ==================================================
-    // LOAD ACCESS LOG FROM GITHUB (plain fetch, no complex styling)
-    // ==================================================
     function loadAccessLog() {
+      // only load if user is logged in
+      if (!isLoggedIn) {
+        return;
+      }
+      
       const tbody = document.getElementById('logEntries');
       const statusSpan = document.getElementById('systemStatus');
       const lastUpdateSpan = document.getElementById('lastUpdate');
       
-      // update status text to show we're connecting
       statusSpan.textContent = 'fetching...';
       
       const url = getDataUrl();
@@ -118,11 +213,9 @@
         });
         
         if (dataLines.length === 0) {
-          // no data available yet
           tbody.innerHTML = `<tr><td colspan="4" align="center">no access records yet. scan an RFID card.</td></tr>`;
           statusSpan.textContent = 'online (no data)';
           updateStats(0, 0, 0);
-          // update timestamp anyway
           lastUpdateSpan.textContent = new Date().toLocaleString();
           return;
         }
@@ -145,24 +238,18 @@
             const timestamp = parts[0];
             const uid = parts[1];
             const accessStatusRaw = parts[2];
-            let displayStatus = accessStatusRaw;
-            let isGranted = (accessStatusRaw.toUpperCase() === 'GRANTED');
             
             // count stats
             totalScans++;
-            if (isGranted) {
+            if (accessStatusRaw.toUpperCase() === 'GRANTED') {
               grantedTotal++;
             } else if (accessStatusRaw.toUpperCase() === 'DENIED') {
               deniedTotal++;
-            } else {
-              // unknown status, maybe just count as denied? but we still increment denied? no, ignore others
-              // but for safety we treat as denied only if DENIED else not count? but we want accurate granted/denied
-              // if text is something else maybe system still treat as denied? but according to format it's GRANTED/DENIED
             }
+            // unknown status is just ignored in counts but displayed as is
             
-            // basic row creation (no css classes)
+            // create row
             const row = tbody.insertRow();
-            // row number index (1-based)
             const rowNum = i + 1;
             
             const cellNum = row.insertCell(0);
@@ -172,7 +259,6 @@
             cellTime.textContent = timestamp;
             
             const cellUid = row.insertCell(2);
-            // simple monospace styling but no fancy background or border radius
             const uidSpan = document.createElement('span');
             uidSpan.textContent = uid;
             uidSpan.style.fontFamily = 'monospace';
@@ -181,7 +267,6 @@
             cellUid.appendChild(uidSpan);
             
             const cellStatus = row.insertCell(3);
-            // show granted/denied with plain text, no icons, no pseudo-elements
             if (accessStatusRaw.toUpperCase() === 'GRANTED') {
               cellStatus.textContent = 'GRANTED';
               cellStatus.style.color = '#155724';
@@ -194,24 +279,16 @@
               cellStatus.textContent = accessStatusRaw;
             }
           } else {
-            // malformed line? just skip but we can show error? not needed for amateur look
             console.warn('skipping malformed line:', line);
           }
         }
         
-        // update statistics with actual counted numbers
         updateStats(totalScans, grantedTotal, deniedTotal);
-        
-        // update system status and timestamp
         statusSpan.textContent = 'online';
         lastUpdateSpan.textContent = new Date().toLocaleString();
-        
-        // if for some reason granted/denied mismatch cause the raw data lines might have inconsistent format, 
-        // but we iterate properly
       })
       .catch(error => {
-        console.error('error loading log:', error);
-        // show error in table
+        console.error('error loading data:', error);
         tbody.innerHTML = `
           <tr>
             <td colspan="4" align="center" style="color: #a00;">
@@ -229,29 +306,56 @@
       });
     }
     
-    // simple stats update function
     function updateStats(total, granted, denied) {
-      document.getElementById('totalAccess').textContent = total;
-      document.getElementById('grantedAccess').textContent = granted;
-      document.getElementById('deniedAccess').textContent = denied;
+      // only update if main content elements exist (they do, but check anyway)
+      if (document.getElementById('totalAccess')) {
+        document.getElementById('totalAccess').textContent = total;
+        document.getElementById('grantedAccess').textContent = granted;
+        document.getElementById('deniedAccess').textContent = denied;
+      }
     }
-    
-    // auto refresh interval
-    let refreshInterval = null;
     
     function startAutoRefresh() {
       if (refreshInterval) {
         clearInterval(refreshInterval);
       }
       refreshInterval = setInterval(() => {
-        loadAccessLog();
+        // only refresh if still logged in
+        if (isLoggedIn) {
+          loadAccessLog();
+        }
       }, AUTO_REFRESH_MS);
     }
     
-    // load on page load and set interval
+    // ==================================================
+    // HANDLE PAGE LOAD - ensure login screen visible
+    // ==================================================
     document.addEventListener('DOMContentLoaded', () => {
-      loadAccessLog();
-      startAutoRefresh();
+      // make sure main content is hidden, login container visible
+      document.getElementById('mainContent').style.display = 'none';
+      document.getElementById('loginContainer').style.display = 'block';
+      
+      // clear any previous interval
+      if (refreshInterval) {
+        clearInterval(refreshInterval);
+        refreshInterval = null;
+      }
+      
+      // set focus on username field
+      document.getElementById('loginUsername').focus();
+      
+      // allow Enter key to submit login
+      const passField = document.getElementById('loginPassword');
+      const userField = document.getElementById('loginUsername');
+      
+      function handleEnter(e) {
+        if (e.key === 'Enter') {
+          attemptLogin();
+        }
+      }
+      
+      passField.addEventListener('keypress', handleEnter);
+      userField.addEventListener('keypress', handleEnter);
     });
   </script>
 </body>
