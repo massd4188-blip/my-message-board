@@ -1,3 +1,7 @@
+#MAP: John Doe | 5A 42 13 07
+#MAP: John Doe | 12 34 56 78
+#MAP: Jane Smith | AA BB CC DD
+#MAP: Admin User | 99 88 77 66, 11 22 33 44
 
 2026-05-11 19:26:53 | 5A 42 13 07 | GRANTED
 2026-05-11 19:29:16 | 5A 42 13 07 | GRANTED
